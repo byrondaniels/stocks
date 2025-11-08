@@ -27,6 +27,11 @@ export const PortfolioSchema = new Schema(
       type: Date,
       required: true,
     },
+    lastUpdated: {
+      type: Date,
+      required: false,
+      index: true,
+    },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt fields
@@ -89,6 +94,9 @@ export const StockPriceSchema = new Schema(
 // Compound indexes for efficient queries
 StockPriceSchema.index({ ticker: 1, date: -1 });
 StockPriceSchema.index({ date: -1 });
+
+// Unique constraint to prevent duplicate price entries for same date
+StockPriceSchema.index({ ticker: 1, date: 1 }, { unique: true });
 
 /**
  * Stock Metrics Collection Schema

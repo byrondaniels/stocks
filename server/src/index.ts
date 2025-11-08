@@ -10,7 +10,13 @@ import {
   clearAllCaches,
   type ApiError,
 } from "./services/stockData.js";
-import { connectToDatabase, InsiderTransaction } from "./db/index.js";
+import {
+  fetchAndStoreHistoricalPrices,
+  calculateMovingAverage,
+  getPriceHistorySummary,
+  getLatestStoredPrice,
+} from "./services/priceHistory.js";
+import { connectToDatabase, InsiderTransaction, Portfolio } from "./db/index.js";
 
 const PORT = process.env.PORT || 3001;
 const SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json";
@@ -472,6 +478,7 @@ async function getInsiderTransactions(
 
 const app = express();
 app.use(cors());
+app.use(express.json()); // Parse JSON request bodies
 
 const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
 
@@ -498,6 +505,243 @@ app.get("/api/insiders", async (req: Request, res: ExpressResponse) => {
     console.error(error);
     res.status(502).json({
       error: "Unable to retrieve insider transactions from the SEC.",
+    });
+  }
+});
+
+// ============================================================================
+// Portfolio Management API Endpoints
+// ============================================================================
+
+/**
+ * GET /api/portfolio
+ * Get all portfolio stocks with their latest price data and 50DMA
+ */
+app.get("/api/portfolio", async (_req: Request, res: ExpressResponse) => {
+  try {
+    const portfolioStocks = await Portfolio.find().sort({ createdAt: -1 }).lean();
+
+    // Enrich each portfolio item with price history data
+    const enrichedPortfolio = await Promise.all(
+      portfolioStocks.map(async (stock: any) => {
+        const summary = await getPriceHistorySummary(stock.ticker);
+        const latestPrice = await getLatestStoredPrice(stock.ticker);
+
+        return {
+          ...stock,
+          priceHistory: {
+            priceCount: summary.priceCount,
+            oldestDate: summary.oldestDate,
+            latestDate: summary.latestDate,
+            movingAverage50: summary.movingAverage50,
+            latestClose: latestPrice?.close || null,
+          },
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      count: enrichedPortfolio.length,
+      portfolio: enrichedPortfolio,
+    });
+  } catch (error) {
+    console.error("[Portfolio] Error fetching portfolio:", error);
+    res.status(500).json({
+      error: "Failed to retrieve portfolio",
+    });
+  }
+});
+
+/**
+ * POST /api/portfolio
+ * Add a new stock to the portfolio and fetch historical prices
+ * Body: { ticker, shares, purchasePrice, purchaseDate }
+ */
+app.post("/api/portfolio", async (req: Request, res: ExpressResponse) => {
+  const { ticker, shares, purchasePrice, purchaseDate } = req.body;
+
+  // Validate required fields
+  if (!ticker || shares === undefined || !purchasePrice || !purchaseDate) {
+    res.status(400).json({
+      error: "Missing required fields: ticker, shares, purchasePrice, purchaseDate",
+    });
+    return;
+  }
+
+  const normalizedTicker = ticker.trim().toUpperCase();
+
+  // Validate ticker format
+  if (!TICKER_REGEX.test(normalizedTicker)) {
+    res.status(400).json({
+      error: "Invalid ticker format. Use 1-5 uppercase letters with optional .suffix.",
+    });
+    return;
+  }
+
+  // Validate numeric values
+  if (typeof shares !== "number" || shares <= 0) {
+    res.status(400).json({
+      error: "Shares must be a positive number",
+    });
+    return;
+  }
+
+  if (typeof purchasePrice !== "number" || purchasePrice <= 0) {
+    res.status(400).json({
+      error: "Purchase price must be a positive number",
+    });
+    return;
+  }
+
+  try {
+    // Create portfolio entry
+    const portfolioEntry = new Portfolio({
+      ticker: normalizedTicker,
+      shares,
+      purchasePrice,
+      purchaseDate: new Date(purchaseDate),
+      lastUpdated: new Date(),
+    });
+
+    await portfolioEntry.save();
+
+    console.log(`[Portfolio] Added ${normalizedTicker} to portfolio`);
+
+    // Fetch and store 50 days of historical prices in the background
+    fetchAndStoreHistoricalPrices(normalizedTicker, 50)
+      .then((count) => {
+        console.log(`[Portfolio] Stored ${count} historical prices for ${normalizedTicker}`);
+      })
+      .catch((error) => {
+        console.error(`[Portfolio] Failed to fetch historical prices for ${normalizedTicker}:`, error);
+      });
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully added ${normalizedTicker} to portfolio. Historical prices are being fetched.`,
+      portfolio: portfolioEntry,
+    });
+  } catch (error) {
+    console.error("[Portfolio] Error adding stock to portfolio:", error);
+    res.status(500).json({
+      error: "Failed to add stock to portfolio",
+    });
+  }
+});
+
+/**
+ * DELETE /api/portfolio/:id
+ * Remove a stock from the portfolio
+ */
+app.delete("/api/portfolio/:id", async (req: Request, res: ExpressResponse) => {
+  const { id } = req.params;
+
+  if (!id) {
+    res.status(400).json({
+      error: "Portfolio entry ID is required",
+    });
+    return;
+  }
+
+  try {
+    const result = await Portfolio.findByIdAndDelete(id);
+
+    if (!result) {
+      res.status(404).json({
+        error: "Portfolio entry not found",
+      });
+      return;
+    }
+
+    console.log(`[Portfolio] Removed ${result.ticker} from portfolio (ID: ${id})`);
+
+    res.json({
+      success: true,
+      message: `Successfully removed ${result.ticker} from portfolio`,
+      removed: result,
+    });
+  } catch (error) {
+    console.error("[Portfolio] Error removing stock from portfolio:", error);
+    res.status(500).json({
+      error: "Failed to remove stock from portfolio",
+    });
+  }
+});
+
+/**
+ * POST /api/portfolio/:ticker/refresh
+ * Manually refresh price history for a specific ticker
+ */
+app.post("/api/portfolio/:ticker/refresh", async (req: Request, res: ExpressResponse) => {
+  const { ticker } = req.params;
+
+  if (!ticker) {
+    res.status(400).json({
+      error: "Ticker is required",
+    });
+    return;
+  }
+
+  const normalizedTicker = ticker.trim().toUpperCase();
+
+  if (!TICKER_REGEX.test(normalizedTicker)) {
+    res.status(400).json({
+      error: "Invalid ticker format",
+    });
+    return;
+  }
+
+  try {
+    // Check if ticker exists in portfolio
+    const portfolioEntry = await Portfolio.findOne({ ticker: normalizedTicker });
+
+    if (!portfolioEntry) {
+      res.status(404).json({
+        error: `${normalizedTicker} not found in portfolio`,
+      });
+      return;
+    }
+
+    // Fetch and store historical prices
+    console.log(`[Portfolio] Manually refreshing price history for ${normalizedTicker}`);
+
+    const storedCount = await fetchAndStoreHistoricalPrices(normalizedTicker, 50);
+
+    // Calculate 50DMA
+    const movingAverage50 = await calculateMovingAverage(normalizedTicker, 50);
+
+    // Update lastUpdated timestamp
+    portfolioEntry.lastUpdated = new Date();
+    await portfolioEntry.save();
+
+    // Get summary
+    const summary = await getPriceHistorySummary(normalizedTicker);
+
+    res.json({
+      success: true,
+      message: `Successfully refreshed price history for ${normalizedTicker}`,
+      ticker: normalizedTicker,
+      storedPrices: storedCount,
+      movingAverage50,
+      summary,
+      lastUpdated: portfolioEntry.lastUpdated,
+    });
+  } catch (error) {
+    console.error(`[Portfolio] Error refreshing prices for ${normalizedTicker}:`, error);
+
+    const apiError = error as ApiError;
+    if (apiError.code === "RATE_LIMIT") {
+      res.status(429).json({
+        error: apiError.message,
+        retryAfter: apiError.retryAfter,
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: "Failed to refresh price history",
+      details: apiError.message || "Unknown error",
     });
   }
 });
