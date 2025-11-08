@@ -14,27 +14,68 @@ Converting the insider tracker into a full-fledged stock portfolio tracking syst
 
 #### Story 1.1: Database Schema Design & Migration
 **Priority:** P0 (Blocking)
-**Estimated Effort:** 8-12 hours
+**Estimated Effort:** 6-8 hours
 
 **Description:**
-Migrate from LowDB to PostgreSQL for better data management and querying capabilities.
+Migrate from LowDB to MongoDB for better data management and flexible schema.
 
 **Tasks:**
-- Set up PostgreSQL locally (Docker recommended)
-- Design schema:
-  - `portfolio` table (ticker, shares, purchase_price, purchase_date, created_at)
-  - `stock_prices` table (ticker, date, open, high, low, close, volume)
-  - `stock_metrics` table (ticker, data_type, value, fetched_at) - flexible JSON storage
-  - Keep existing insider cache approach or migrate to `insider_transactions` table
-- Create migration scripts
-- Add database connection pooling (pg library)
-- Update server to use PostgreSQL instead of LowDB
+- Set up MongoDB locally (Docker recommended: `docker run -d -p 27017:27017 mongo`)
+- Design collections:
+  - `portfolio` collection:
+    ```javascript
+    {
+      ticker: String,
+      shares: Number,
+      purchasePrice: Number,
+      purchaseDate: Date,
+      createdAt: Date,
+      updatedAt: Date
+    }
+    ```
+  - `stockPrices` collection:
+    ```javascript
+    {
+      ticker: String,
+      date: Date,
+      open: Number,
+      high: Number,
+      low: Number,
+      close: Number,
+      volume: Number
+    }
+    ```
+  - `stockMetrics` collection (flexible schema):
+    ```javascript
+    {
+      ticker: String,
+      dataType: String, // 'ownership', 'canslim', 'financials'
+      data: Object, // flexible JSON
+      fetchedAt: Date
+    }
+    ```
+  - `insiderTransactions` collection (migrate existing cache):
+    ```javascript
+    {
+      ticker: String,
+      cik: String,
+      transactions: Array,
+      summary: Object,
+      fetchedAt: Date
+    }
+    ```
+- Add MongoDB client (mongoose ODM recommended)
+- Create database connection with connection pooling
+- Define Mongoose schemas and models
+- Create indexes (ticker fields, date fields)
+- Update server to use MongoDB instead of LowDB
 
 **Acceptance Criteria:**
-- PostgreSQL running locally
-- All tables created with proper indexes
+- MongoDB running locally
+- All collections created with proper indexes
+- Mongoose models defined with validation
 - Server can connect and perform basic CRUD operations
-- Existing insider cache logic migrated
+- Existing insider cache logic migrated to MongoDB
 
 **Dependencies:** None
 
@@ -120,7 +161,7 @@ GET    /api/portfolio/:ticker      - Get detailed view for one stock
 
 **Tasks:**
 - Create portfolio controller and routes
-- Implement CRUD operations with PostgreSQL
+- Implement CRUD operations with MongoDB/Mongoose
 - Add input validation (ticker format, positive numbers)
 - Calculate profit/loss fields in response
 - Add error handling (duplicate ticker, not found, etc.)
@@ -620,14 +661,14 @@ PHASE 3 (Parallel):
 - Gemini AI (CANSLIM analysis)
 
 **New Dependencies:**
-- `pg` - PostgreSQL client
+- `mongoose` - MongoDB ODM
 - `recharts` - React charting library
 - `react-router-dom` - Navigation (if not already added)
 - `react-hot-toast` - Toast notifications
 - `@google/generative-ai` - Gemini API client
 
 **Infrastructure:**
-- PostgreSQL database (Docker for local dev)
+- MongoDB database (Docker for local dev)
 - Existing Express + React stack
 
 ---
@@ -646,7 +687,7 @@ PHASE 3 (Parallel):
   6. CANSLIM score
   7. Manual refresh works
 - ✅ Stock detail page shows comprehensive view
-- ✅ Data persists in PostgreSQL
+- ✅ Data persists in MongoDB
 - ✅ Responsive UI on desktop and mobile
 
 ---
