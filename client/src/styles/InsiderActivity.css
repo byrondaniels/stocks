@@ -1,0 +1,110 @@
+.insider-activity-container {
+  position: relative;
+  display: inline-block;
+}
+
+.insider-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.insider-indicator:hover {
+  opacity: 0.8;
+}
+
+.insider-indicator.buying {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.insider-indicator.selling {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.insider-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.insider-text {
+  white-space: nowrap;
+}
+
+.insider-none {
+  color: #999;
+  font-size: 0.875rem;
+}
+
+/* Tooltip */
+.insider-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #333;
+  color: #fff;
+  padding: 0.75rem;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  pointer-events: none;
+}
+
+.insider-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #333;
+}
+
+.insider-tooltip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.insider-tooltip-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid #555;
+  padding-bottom: 0.25rem;
+}
+
+.insider-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.813rem;
+}
+
+.insider-tooltip-net {
+  font-weight: 600;
+  border-top: 1px solid #555;
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.insider-buy {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.insider-sell {
+  color: #dc3545;
+  font-weight: 500;
+}
