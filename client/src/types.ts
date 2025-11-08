@@ -61,3 +61,12 @@ export interface OwnershipData {
   source: 'fmp' | 'sec';
   timestamp: string;
 }
+
+export interface PriceHistoryPoint {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}

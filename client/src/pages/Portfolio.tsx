@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PortfolioStock, AddStockFormData, PortfolioSummary as PortfolioSummaryType } from '../types';
 import { AddStockForm } from '../components/AddStockForm';
 import { PortfolioTable } from '../components/PortfolioTable';
+import { StockCard } from '../components/StockCard';
 import { PortfolioSummary } from '../components/PortfolioSummary';
 import { EmptyState } from '../components/EmptyState';
 import { DeleteConfirmation } from '../components/DeleteConfirmation';
@@ -14,6 +15,7 @@ export function Portfolio() {
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   // Fetch portfolio data
   const fetchPortfolio = async () => {
@@ -25,7 +27,7 @@ export function Portfolio() {
         throw new Error(payload?.error ?? `Failed to fetch portfolio: ${response.status}`);
       }
       const data = await response.json();
-      setStocks(data);
+      setStocks(data.portfolio || data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load portfolio');
     } finally {
@@ -148,17 +150,45 @@ export function Portfolio() {
 
       <AddStockForm onAdd={handleAddStock} loading={loading} />
 
-      {stocks.length > 0 && <PortfolioSummary summary={summary} />}
+      {stocks.length > 0 && <PortfolioSummary summary={summary} stockCount={stocks.length} />}
 
       {stocks.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="portfolio-content">
-          <PortfolioTable
-            stocks={stocks}
-            onRemove={handleRemoveClick}
-            onDetail={handleStockDetail}
-          />
+          <div className="view-toggle">
+            <button
+              className={`toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+              onClick={() => setViewMode('cards')}
+            >
+              📊 Card View
+            </button>
+            <button
+              className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => setViewMode('table')}
+            >
+              📋 Table View
+            </button>
+          </div>
+
+          {viewMode === 'cards' ? (
+            <div className="stock-grid">
+              {stocks.map((stock) => (
+                <StockCard
+                  key={stock.ticker}
+                  stock={stock}
+                  onRemove={handleRemoveClick}
+                  onDetail={handleStockDetail}
+                />
+              ))}
+            </div>
+          ) : (
+            <PortfolioTable
+              stocks={stocks}
+              onRemove={handleRemoveClick}
+              onDetail={handleStockDetail}
+            />
+          )}
         </div>
       )}
 

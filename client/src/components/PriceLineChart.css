@@ -1,0 +1,88 @@
+.price-chart {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.price-chart.compact {
+  padding: 0;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.chart-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.price-change {
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.price-change.positive {
+  color: #10b981;
+  background-color: #d1fae5;
+}
+
+.price-change.negative {
+  color: #ef4444;
+  background-color: #fee2e2;
+}
+
+.chart-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.no-data {
+  text-align: center;
+  color: #94a3b8;
+  padding: 40px 20px;
+  margin: 0;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .price-chart {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  .chart-header {
+    border-bottom-color: #334155;
+  }
+
+  .chart-header h3 {
+    color: #f1f5f9;
+  }
+
+  .chart-footer {
+    border-top-color: #334155;
+    color: #94a3b8;
+  }
+
+  .no-data {
+    color: #64748b;
+  }
+}
