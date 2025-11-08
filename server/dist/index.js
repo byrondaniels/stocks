@@ -2,7 +2,8 @@ import cors from "cors";
 import express from "express";
 import { XMLParser } from "fast-xml-parser";
 import { getCurrentPrice, getOwnershipData, getFinancialMetrics, getHistoricalPrices, getRateLimitStatus, clearAllCaches, } from "./services/stockData.js";
-import { fetchAndStoreHistoricalPrices, calculateMovingAverage, getPriceHistorySummary, calculate50DMA, } from "./services/priceHistory.js";
+import { fetchAndStoreHistoricalPrices, calculateMovingAverage, getPriceHistorySummary, getLatestStoredPrice, calculate50DMA, } from "./services/priceHistory.js";
+import { getOrCalculateCANSLIMScore, calculateCANSLIMScore, } from "./services/canslimCalculator.js";
 import { connectToDatabase, InsiderTransaction, Portfolio } from "./db/index.js";
 const PORT = process.env.PORT || 3001;
 const SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json";
@@ -709,6 +710,81 @@ app.get("/api/stock/rate-limits", (_req, res) => {
 app.post("/api/stock/clear-cache", (_req, res) => {
     clearAllCaches();
     res.json({ success: true, message: "All caches cleared" });
+});
+// ============================================================================
+// CANSLIM Score API Endpoints
+// ============================================================================
+// GET /api/stock/canslim?ticker=AAPL - Get CANSLIM score (cached or calculate)
+app.get("/api/stock/canslim", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        // Get cached score or calculate if not cached/stale (24 hour cache)
+        const canslimScore = await getOrCalculateCANSLIMScore(ticker, 24);
+        res.json(canslimScore);
+    }
+    catch (error) {
+        console.error("Error calculating CANSLIM score:", error);
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        res.status(502).json({
+            error: "Unable to calculate CANSLIM score. Please try again later.",
+        });
+    }
+});
+// POST /api/stock/canslim/refresh?ticker=AAPL - Force recalculation of CANSLIM score
+app.post("/api/stock/canslim/refresh", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        console.log(`[API] Forcing CANSLIM score refresh for ${ticker}`);
+        const canslimScore = await calculateCANSLIMScore(ticker);
+        res.json({
+            success: true,
+            message: "CANSLIM score refreshed successfully",
+            data: canslimScore,
+        });
+    }
+    catch (error) {
+        console.error("Error refreshing CANSLIM score:", error);
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        res.status(502).json({
+            error: "Unable to refresh CANSLIM score. Please try again later.",
+        });
+    }
 });
 // ============================================================================
 // Portfolio CRUD API Endpoints

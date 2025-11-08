@@ -1,4 +1,6 @@
-import { FormEvent, useEffect, useState } from "react";
+
+import { FormEvent, useMemo, useEffect, useState } from "react";
+import { CANSLIMScore } from "./components/CANSLIMScore";
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { InsiderLookup } from './pages/InsiderLookup';
 import { StockDetail } from './pages/StockDetail';
@@ -265,8 +267,8 @@ function Portfolio() {
   return (
     <div className="app">
       <header>
-        <h1>Stock Portfolio Tracker</h1>
-        <p>Track your stock holdings with 50-day moving average indicators</p>
+        <h1>Stock Analysis Dashboard</h1>
+        <p>Enter a U.S. stock ticker to view insider transactions, 50 day avg indicators and CANSLIM score analysis.</p>
       </header>
 
       {error && <div className="alert error">{error}</div>}
@@ -420,6 +422,10 @@ function Portfolio() {
                 ✕
               </button>
             </div>
+          )}
+          {/* CANSLIM Score Section */}
+          <CANSLIMScore ticker={result.ticker} />
+        </section>
             <div className="modal-body">
               <div className="detail-grid">
                 <div className="detail-item">
