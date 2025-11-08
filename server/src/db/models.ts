@@ -15,6 +15,7 @@ export interface IPortfolio extends Document {
   shares: number;
   purchasePrice: number;
   purchaseDate: Date;
+  lastUpdated?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
