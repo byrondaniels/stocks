@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import "./App.css";
+import { CANSLIMScore } from "./components/CANSLIMScore";
 
 const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
 
@@ -106,8 +107,8 @@ function App() {
   return (
     <div className="app">
       <header>
-        <h1>Insider Transactions Lookup</h1>
-        <p>Enter a U.S. stock ticker to view the latest Form 3/4/5 insider activity from the SEC.</p>
+        <h1>Stock Analysis Dashboard</h1>
+        <p>Enter a U.S. stock ticker to view insider transactions and CANSLIM score analysis.</p>
       </header>
 
       <form className="lookup-form" onSubmit={handleSubmit}>
@@ -179,6 +180,9 @@ function App() {
               </table>
             </div>
           )}
+
+          {/* CANSLIM Score Section */}
+          <CANSLIMScore ticker={result.ticker} />
         </section>
       )}
     </div>
