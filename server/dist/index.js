@@ -2,7 +2,7 @@ import cors from "cors";
 import express from "express";
 import { XMLParser } from "fast-xml-parser";
 import { getCurrentPrice, getOwnershipData, getFinancialMetrics, getHistoricalPrices, getRateLimitStatus, clearAllCaches, } from "./services/stockData.js";
-import { connectToDatabase, InsiderTransaction } from "./db/index.js";
+import { connectToDatabase, InsiderTransaction, Portfolio } from "./db/index.js";
 const PORT = process.env.PORT || 3001;
 const SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json";
 const SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/";
@@ -336,6 +336,7 @@ async function getInsiderTransactions(ticker) {
 }
 const app = express();
 app.use(cors());
+app.use(express.json()); // Parse JSON request bodies
 const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
 app.get("/api/insiders", async (req, res) => {
     const rawTicker = req.query.ticker ?? "";
@@ -509,14 +510,272 @@ app.post("/api/stock/clear-cache", (_req, res) => {
     res.json({ success: true, message: "All caches cleared" });
 });
 // ============================================================================
-app.listen(PORT, () => {
-    console.log(`Insider transactions API listening on port ${PORT}`);
-    console.log(`Stock data API endpoints available at /api/stock/*`);
+// Portfolio CRUD API Endpoints
+// ============================================================================
+// GET /api/portfolio - List all stocks in portfolio
+app.get("/api/portfolio", async (_req, res) => {
+    try {
+        const portfolioItems = await Portfolio.find({}).lean();
+        // Fetch current prices and calculate profit/loss for each stock
+        const portfolioWithMetrics = await Promise.all(portfolioItems.map(async (item) => {
+            try {
+                const priceData = await getCurrentPrice(item.ticker);
+                const currentPrice = priceData.price;
+                const profitLoss = (currentPrice - item.purchasePrice) * item.shares;
+                const profitLossPercent = ((currentPrice - item.purchasePrice) / item.purchasePrice) * 100;
+                return {
+                    ticker: item.ticker,
+                    shares: item.shares,
+                    purchasePrice: item.purchasePrice,
+                    purchaseDate: item.purchaseDate.toISOString(),
+                    currentPrice,
+                    profitLoss: parseFloat(profitLoss.toFixed(2)),
+                    profitLossPercent: parseFloat(profitLossPercent.toFixed(2)),
+                };
+            }
+            catch (error) {
+                // If we can't get current price, return without profit/loss metrics
+                return {
+                    ticker: item.ticker,
+                    shares: item.shares,
+                    purchasePrice: item.purchasePrice,
+                    purchaseDate: item.purchaseDate.toISOString(),
+                };
+            }
+        }));
+        res.json(portfolioWithMetrics);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Unable to retrieve portfolio data.",
+        });
+    }
+});
+// GET /api/portfolio/:ticker - Get detailed view for one stock
+app.get("/api/portfolio/:ticker", async (req, res) => {
+    const ticker = req.params.ticker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        const portfolioItem = await Portfolio.findOne({ ticker }).lean();
+        if (!portfolioItem) {
+            res.status(404).json({
+                error: `Stock ${ticker} not found in portfolio.`,
+            });
+            return;
+        }
+        try {
+            const priceData = await getCurrentPrice(ticker);
+            const currentPrice = priceData.price;
+            const profitLoss = (currentPrice - portfolioItem.purchasePrice) * portfolioItem.shares;
+            const profitLossPercent = ((currentPrice - portfolioItem.purchasePrice) / portfolioItem.purchasePrice) * 100;
+            res.json({
+                ticker: portfolioItem.ticker,
+                shares: portfolioItem.shares,
+                purchasePrice: portfolioItem.purchasePrice,
+                purchaseDate: portfolioItem.purchaseDate.toISOString(),
+                currentPrice,
+                profitLoss: parseFloat(profitLoss.toFixed(2)),
+                profitLossPercent: parseFloat(profitLossPercent.toFixed(2)),
+            });
+        }
+        catch (error) {
+            // If we can't get current price, return without profit/loss metrics
+            res.json({
+                ticker: portfolioItem.ticker,
+                shares: portfolioItem.shares,
+                purchasePrice: portfolioItem.purchasePrice,
+                purchaseDate: portfolioItem.purchaseDate.toISOString(),
+            });
+        }
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Unable to retrieve stock from portfolio.",
+        });
+    }
+});
+// POST /api/portfolio - Add stock to portfolio
+app.post("/api/portfolio", async (req, res) => {
+    const { ticker: rawTicker, shares, purchasePrice, purchaseDate } = req.body;
+    // Validate required fields
+    if (!rawTicker || shares === undefined || purchasePrice === undefined || !purchaseDate) {
+        res.status(400).json({
+            error: "Missing required fields: ticker, shares, purchasePrice, purchaseDate.",
+        });
+        return;
+    }
+    const ticker = rawTicker.trim().toUpperCase();
+    // Validate ticker format
+    if (!TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker format. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    // Validate positive numbers
+    if (typeof shares !== "number" || shares <= 0) {
+        res.status(400).json({
+            error: "Shares must be a positive number.",
+        });
+        return;
+    }
+    if (typeof purchasePrice !== "number" || purchasePrice <= 0) {
+        res.status(400).json({
+            error: "Purchase price must be a positive number.",
+        });
+        return;
+    }
+    // Validate date format
+    const date = new Date(purchaseDate);
+    if (isNaN(date.getTime())) {
+        res.status(400).json({
+            error: "Invalid purchase date. Please use ISO date format (YYYY-MM-DD).",
+        });
+        return;
+    }
+    try {
+        // Check if ticker already exists in portfolio
+        const existing = await Portfolio.findOne({ ticker });
+        if (existing) {
+            res.status(409).json({
+                error: `Stock ${ticker} already exists in portfolio. Use PUT to update.`,
+            });
+            return;
+        }
+        // Create new portfolio entry
+        const newPortfolioItem = new Portfolio({
+            ticker,
+            shares,
+            purchasePrice,
+            purchaseDate: date,
+        });
+        await newPortfolioItem.save();
+        res.status(201).json({
+            ticker: newPortfolioItem.ticker,
+            shares: newPortfolioItem.shares,
+            purchasePrice: newPortfolioItem.purchasePrice,
+            purchaseDate: newPortfolioItem.purchaseDate.toISOString(),
+        });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Unable to add stock to portfolio.",
+        });
+    }
+});
+// PUT /api/portfolio/:ticker - Update stock (shares, purchase price)
+app.put("/api/portfolio/:ticker", async (req, res) => {
+    const ticker = req.params.ticker.trim().toUpperCase();
+    const { shares, purchasePrice, purchaseDate } = req.body;
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    // Build update object with only provided fields
+    const updateFields = {};
+    if (shares !== undefined) {
+        if (typeof shares !== "number" || shares <= 0) {
+            res.status(400).json({
+                error: "Shares must be a positive number.",
+            });
+            return;
+        }
+        updateFields.shares = shares;
+    }
+    if (purchasePrice !== undefined) {
+        if (typeof purchasePrice !== "number" || purchasePrice <= 0) {
+            res.status(400).json({
+                error: "Purchase price must be a positive number.",
+            });
+            return;
+        }
+        updateFields.purchasePrice = purchasePrice;
+    }
+    if (purchaseDate !== undefined) {
+        const date = new Date(purchaseDate);
+        if (isNaN(date.getTime())) {
+            res.status(400).json({
+                error: "Invalid purchase date. Please use ISO date format (YYYY-MM-DD).",
+            });
+            return;
+        }
+        updateFields.purchaseDate = date;
+    }
+    // Check if there are any fields to update
+    if (Object.keys(updateFields).length === 0) {
+        res.status(400).json({
+            error: "No fields to update. Provide shares, purchasePrice, or purchaseDate.",
+        });
+        return;
+    }
+    try {
+        const updatedItem = await Portfolio.findOneAndUpdate({ ticker }, { $set: updateFields }, { new: true, runValidators: true });
+        if (!updatedItem) {
+            res.status(404).json({
+                error: `Stock ${ticker} not found in portfolio.`,
+            });
+            return;
+        }
+        res.json({
+            ticker: updatedItem.ticker,
+            shares: updatedItem.shares,
+            purchasePrice: updatedItem.purchasePrice,
+            purchaseDate: updatedItem.purchaseDate.toISOString(),
+        });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Unable to update stock in portfolio.",
+        });
+    }
+});
+// DELETE /api/portfolio/:ticker - Remove stock from portfolio
+app.delete("/api/portfolio/:ticker", async (req, res) => {
+    const ticker = req.params.ticker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        const deletedItem = await Portfolio.findOneAndDelete({ ticker });
+        if (!deletedItem) {
+            res.status(404).json({
+                error: `Stock ${ticker} not found in portfolio.`,
+            });
+            return;
+        }
+        res.json({
+            message: `Stock ${ticker} removed from portfolio.`,
+            ticker: deletedItem.ticker,
+        });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Unable to remove stock from portfolio.",
+        });
+    }
+});
+// ============================================================================
 // Connect to MongoDB and start server
 connectToDatabase()
     .then(() => {
     app.listen(PORT, () => {
-        console.log(`Insider transactions API listening on port ${PORT}`);
+        console.log(`Stock API listening on port ${PORT}`);
+        console.log(`Available endpoints: /api/stock/*, /api/portfolio, /api/insiders`);
     });
 })
     .catch((error) => {
