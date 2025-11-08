@@ -1,11 +1,8 @@
 import cors from "cors";
 import express from "express";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { Low } from "lowdb";
-import { JSONFile } from "lowdb/node";
 import { XMLParser } from "fast-xml-parser";
 import { getCurrentPrice, getOwnershipData, getFinancialMetrics, getHistoricalPrices, getRateLimitStatus, clearAllCaches, } from "./services/stockData.js";
+import { connectToDatabase, InsiderTransaction } from "./db/index.js";
 const PORT = process.env.PORT || 3001;
 const SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json";
 const SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/";
@@ -21,20 +18,6 @@ let lastRequestTime = 0;
 let tickerMapPromise = null;
 const submissionCache = new Map();
 const transactionsCache = new Map();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_PATH = path.resolve(__dirname, "../data/insiders.json");
-const defaultDbData = { insiders: {} };
-const dbPromise = (async () => {
-    const adapter = new JSONFile(DB_PATH);
-    const db = new Low(adapter, defaultDbData);
-    await db.read();
-    if (!db.data) {
-        db.data = { insiders: {} };
-        await db.write();
-    }
-    return db;
-})();
 const xmlParser = new XMLParser({
     ignoreAttributes: false,
     trimValues: true,
@@ -529,19 +512,31 @@ app.post("/api/stock/clear-cache", (_req, res) => {
 app.listen(PORT, () => {
     console.log(`Insider transactions API listening on port ${PORT}`);
     console.log(`Stock data API endpoints available at /api/stock/*`);
+// Connect to MongoDB and start server
+connectToDatabase()
+    .then(() => {
+    app.listen(PORT, () => {
+        console.log(`Insider transactions API listening on port ${PORT}`);
+    });
+})
+    .catch((error) => {
+    console.error("Failed to connect to MongoDB. Server not started:", error);
+    process.exit(1);
 });
 async function readStoredInsider(ticker) {
     try {
-        const db = await dbPromise;
-        const entry = db.data?.insiders?.[ticker];
-        if (!entry) {
+        const record = await InsiderTransaction.findOne({ ticker }).lean();
+        if (!record) {
             return null;
         }
-        if (Date.now() - entry.cachedAt > PERSISTED_CACHE_MS) {
-            return null;
-        }
-        const { cachedAt: _cachedAt, ...payload } = entry;
-        return payload;
+        // MongoDB TTL index will automatically delete expired documents
+        // So if we found it, it's valid
+        return {
+            ticker: record.ticker,
+            cik: record.cik,
+            summary: record.summary,
+            transactions: record.transactions,
+        };
     }
     catch (error) {
         console.warn(`[DB] Failed to read cached insider data for ${ticker}`, error);
@@ -550,12 +545,13 @@ async function readStoredInsider(ticker) {
 }
 async function writeStoredInsider(ticker, record) {
     try {
-        const db = await dbPromise;
-        if (!db.data) {
-            db.data = { insiders: {} };
-        }
-        db.data.insiders[ticker] = { ...record, cachedAt: Date.now() };
-        await db.write();
+        await InsiderTransaction.updateOne({ ticker }, {
+            ticker: record.ticker,
+            cik: record.cik,
+            transactions: record.transactions,
+            summary: record.summary,
+            fetchedAt: new Date(),
+        }, { upsert: true });
     }
     catch (error) {
         console.warn(`[DB] Failed to persist insider data for ${ticker}`, error);
