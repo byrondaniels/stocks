@@ -182,6 +182,48 @@ export async function getPriceHistorySummary(ticker: string) {
 }
 
 /**
+ * Calculate 50DMA statistics including percentage difference from current price
+ * @param ticker Stock ticker symbol
+ * @returns Object with 50DMA, current price, and percentage difference
+ */
+export async function calculate50DMA(ticker: string) {
+  const normalizedTicker = ticker.toUpperCase();
+
+  try {
+    // Get the most recent price (current price)
+    const latestPrice = await getLatestStoredPrice(normalizedTicker);
+
+    // Calculate 50-day moving average
+    const movingAverage50 = await calculateMovingAverage(normalizedTicker, 50);
+
+    // If we don't have enough data, return null values
+    if (!latestPrice || !movingAverage50) {
+      return {
+        currentPrice: latestPrice?.close || null,
+        movingAverage50: movingAverage50,
+        percentageDifference: null,
+        priceCount: await StockPrice.countDocuments({ ticker: normalizedTicker }),
+      };
+    }
+
+    // Calculate percentage difference: ((current - MA) / MA) * 100
+    // Positive means price is above 50DMA, negative means below
+    const percentageDifference = ((latestPrice.close - movingAverage50) / movingAverage50) * 100;
+
+    return {
+      currentPrice: latestPrice.close,
+      movingAverage50: movingAverage50,
+      percentageDifference: percentageDifference,
+      priceCount: await StockPrice.countDocuments({ ticker: normalizedTicker }),
+      latestDate: latestPrice.date,
+    };
+  } catch (error) {
+    console.error(`[PriceHistory] Error calculating 50DMA stats for ${normalizedTicker}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Delete all stored prices for a ticker
  * @param ticker Stock ticker symbol
  * @returns Number of deleted records
