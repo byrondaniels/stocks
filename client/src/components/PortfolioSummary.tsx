@@ -33,7 +33,7 @@ export function PortfolioSummary({ summary }: PortfolioSummaryProps) {
           <div className="summary-value">{formatCurrency(summary.totalCost)}</div>
         </div>
         <div className="summary-card">
-          <div className="summary-label">Total Gain/Loss</div>
+          <div className="summary-label">Unrealized Gains/Losses</div>
           <div className={`summary-value ${isProfit ? 'profit' : 'loss'}`}>
             {formatCurrency(summary.totalGainLoss)}
           </div>
