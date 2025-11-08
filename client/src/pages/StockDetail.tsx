@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { InsiderData, OwnershipData, PriceHistoryPoint } from '../types';
-import OwnershipPieChart from '../components/OwnershipPieChart';
 import { PriceLineChart } from '../components/PriceLineChart';
+import { InsiderData, OwnershipData, MovingAverageData, CANSLIMScore, PriceHistoryPoint } from '../types';
+import OwnershipPieChart from '../components/OwnershipPieChart';
+import { CANSLIMScore as CANSLIMScoreComponent } from '../components/CANSLIMScore';
+import './StockDetail.css';
 
 interface StockDetailData {
   ticker: string;
@@ -13,6 +15,12 @@ interface StockDetailData {
   profitLoss?: number;
   profitLossPercent?: number;
   lastUpdated?: string;
+}
+
+interface EditFormData {
+  shares: number;
+  purchasePrice: number;
+  purchaseDate: string;
 }
 
 export function StockDetail() {
@@ -26,7 +34,107 @@ export function StockDetail() {
   const [loadingInsiders, setLoadingInsiders] = useState(true);
   const [loadingOwnership, setLoadingOwnership] = useState(true);
   const [loadingPriceHistory, setLoadingPriceHistory] = useState(true);
+  const [movingAverageData, setMovingAverageData] = useState<MovingAverageData | null>(null);
+  const [loadingMA, setLoadingMA] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editForm, setEditForm] = useState<EditFormData>({
+    shares: 0,
+    purchasePrice: 0,
+    purchaseDate: '',
+  });
+
+  const fetchStockDetail = async () => {
+    if (!ticker) return;
+
+    try {
+      setError(null);
+      const response = await fetch(`/api/portfolio/${encodeURIComponent(ticker)}`);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? `Failed to fetch stock details: ${response.status}`);
+      }
+      const data = await response.json();
+      setStock(data);
+      setEditForm({
+        shares: data.shares,
+        purchasePrice: data.purchasePrice,
+        purchaseDate: data.purchaseDate.split('T')[0],
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load stock details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInsiderData = async () => {
+    if (!ticker) return;
+
+    try {
+      setLoadingInsiders(true);
+      const response = await fetch(`/api/insiders?ticker=${encodeURIComponent(ticker)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInsiderData(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch insider data:', err);
+    } finally {
+      setLoadingInsiders(false);
+    }
+  };
+
+  const fetchOwnershipData = async () => {
+    if (!ticker) return;
+
+    try {
+      setLoadingOwnership(true);
+      const response = await fetch(`/api/stock/ownership?ticker=${encodeURIComponent(ticker)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOwnershipData(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch ownership data:', err);
+    } finally {
+      setLoadingOwnership(false);
+    }
+  };
+
+  const fetchMovingAverageData = async () => {
+    if (!ticker) return;
+
+    try {
+      setLoadingMA(true);
+      const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(ticker)}&days=50`);
+      if (response.ok) {
+        const data = await response.json();
+        // Calculate 50DMA from historical data
+        if (data.prices && data.prices.length > 0) {
+          const prices = data.prices.map((p: any) => p.close);
+          const sum = prices.reduce((a: number, b: number) => a + b, 0);
+          const avg = sum / prices.length;
+          const currentPrice = prices[0];
+          const percentDiff = ((currentPrice - avg) / avg) * 100;
+
+          setMovingAverageData({
+            currentPrice,
+            movingAverage50: avg,
+            percentageDifference: percentDiff,
+            priceCount: prices.length,
+            latestDate: data.prices[0].date,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch moving average data:', err);
+    } finally {
+      setLoadingMA(false);
+    }
+  };
 
   useEffect(() => {
     if (!ticker) {
@@ -34,67 +142,60 @@ export function StockDetail() {
       return;
     }
 
-    const fetchStockDetail = async () => {
-      try {
-        setError(null);
-        const response = await fetch(`/api/portfolio/${encodeURIComponent(ticker)}`);
-        if (!response.ok) {
-          const payload = await response.json().catch(() => null);
-          throw new Error(payload?.error ?? `Failed to fetch stock details: ${response.status}`);
-        }
-        const data = await response.json();
-        setStock(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load stock details');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStockDetail();
+    fetchInsiderData();
+    fetchOwnershipData();
+    fetchMovingAverageData();
   }, [ticker, navigate]);
 
-  useEffect(() => {
+  const handleRefresh = async () => {
     if (!ticker) return;
 
-    const fetchInsiderData = async () => {
-      try {
-        setLoadingInsiders(true);
-        const response = await fetch(`/api/insiders?ticker=${encodeURIComponent(ticker)}`);
-        if (response.ok) {
-          const data = await response.json();
-          setInsiderData(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch insider data:', err);
-      } finally {
-        setLoadingInsiders(false);
-      }
-    };
+    setRefreshing(true);
+    try {
+      // Refresh portfolio data
+      await fetch(`/api/portfolio/${ticker}/refresh`, { method: 'POST' });
 
-    fetchInsiderData();
-  }, [ticker]);
+      // Refetch all data
+      await Promise.all([
+        fetchStockDetail(),
+        fetchInsiderData(),
+        fetchOwnershipData(),
+        fetchMovingAverageData(),
+      ]);
+    } catch (err) {
+      console.error('Failed to refresh data:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-  useEffect(() => {
+  const handleEdit = async () => {
     if (!ticker) return;
 
-    const fetchOwnershipData = async () => {
-      try {
-        setLoadingOwnership(true);
-        const response = await fetch(`/api/stock/ownership?ticker=${encodeURIComponent(ticker)}`);
-        if (response.ok) {
-          const data = await response.json();
-          setOwnershipData(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch ownership data:', err);
-      } finally {
-        setLoadingOwnership(false);
-      }
-    };
+    try {
+      const response = await fetch(`/api/portfolio/${ticker}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
 
-    fetchOwnershipData();
-  }, [ticker]);
+      if (response.ok) {
+        setShowEditForm(false);
+        await fetchStockDetail();
+      }
+    } catch (err) {
+      console.error('Failed to update stock:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!ticker) return;
+
+    try {
+      const response = await fetch(`/api/portfolio/${ticker}`, {
+        method: 'DELETE',
+      });
 
   useEffect(() => {
     if (!ticker) return;
@@ -117,8 +218,8 @@ export function StockDetail() {
     fetchPriceHistory();
   }, [ticker]);
 
-  const formatCurrency = (value: number | undefined) => {
-    if (value === undefined) return '-';
+  const formatCurrency = (value: number | undefined | null) => {
+    if (value === undefined || value === null) return '-';
     return new Intl.NumberFormat(undefined, {
       style: 'currency',
       currency: 'USD',
@@ -127,8 +228,8 @@ export function StockDetail() {
     }).format(value);
   };
 
-  const formatPercent = (value: number | undefined) => {
-    if (value === undefined) return '-';
+  const formatPercent = (value: number | undefined | null) => {
+    if (value === undefined || value === null) return '-';
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
 
@@ -166,12 +267,101 @@ export function StockDetail() {
         ← Back to Portfolio
       </button>
 
-      <header>
-        <h1>{stock.ticker}</h1>
-        <p>Stock Details</p>
-      </header>
+      {/* Stock Header */}
+      <div className="stock-header">
+        <div className="header-main">
+          <h1 className="ticker-symbol">{stock.ticker}</h1>
+          <div className="current-price">
+            {formatCurrency(stock.currentPrice)}
+          </div>
+        </div>
+        <div className="header-secondary">
+          <span className={`price-change ${isProfitable ? 'profit' : 'loss'}`}>
+            {formatCurrency(stock.profitLoss)} ({formatPercent(stock.profitLossPercent)})
+          </span>
+        </div>
+      </div>
 
+      {/* Actions Bar */}
+      <div className="actions-bar">
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="btn-action btn-refresh"
+        >
+          {refreshing ? 'Refreshing...' : '↻ Refresh Data'}
+        </button>
+        <button
+          onClick={() => setShowEditForm(!showEditForm)}
+          className="btn-action btn-edit"
+        >
+          ✎ Edit Position
+        </button>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="btn-action btn-delete"
+        >
+          × Remove Stock
+        </button>
+      </div>
+
+      {/* Edit Form */}
+      {showEditForm && (
+        <div className="edit-form-section">
+          <h3>Edit Position</h3>
+          <div className="edit-form">
+            <div className="form-row">
+              <label>
+                Shares:
+                <input
+                  type="number"
+                  value={editForm.shares}
+                  onChange={(e) => setEditForm({ ...editForm, shares: parseFloat(e.target.value) })}
+                />
+              </label>
+              <label>
+                Purchase Price:
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editForm.purchasePrice}
+                  onChange={(e) => setEditForm({ ...editForm, purchasePrice: parseFloat(e.target.value) })}
+                />
+              </label>
+              <label>
+                Purchase Date:
+                <input
+                  type="date"
+                  value={editForm.purchaseDate}
+                  onChange={(e) => setEditForm({ ...editForm, purchaseDate: e.target.value })}
+                />
+              </label>
+            </div>
+            <div className="form-actions">
+              <button onClick={handleEdit} className="btn-save">Save</button>
+              <button onClick={() => setShowEditForm(false)} className="btn-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation */}
+      {showDeleteConfirm && (
+        <div className="delete-confirmation">
+          <div className="confirmation-content">
+            <h3>Confirm Removal</h3>
+            <p>Are you sure you want to remove {stock.ticker} from your portfolio?</p>
+            <div className="confirmation-actions">
+              <button onClick={handleDelete} className="btn-confirm-delete">Yes, Remove</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="btn-cancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Your Position Section */}
       <div className="stock-detail">
+        <h2>Your Position</h2>
         <div className="detail-grid">
           <div className="detail-card">
             <div className="detail-label">Purchase Information</div>
@@ -241,6 +431,8 @@ export function StockDetail() {
         </div>
 
         {/* Ownership Distribution Section */}
+        <div className="section-divider"></div>
+        <h2>Ownership Distribution</h2>
         <div className="ownership-section">
           {loadingOwnership ? (
             <div className="loading-state">Loading ownership data...</div>
@@ -251,9 +443,62 @@ export function StockDetail() {
           )}
         </div>
 
+        {/* CANSLIM Score Section */}
+        <div className="section-divider"></div>
+        <h2>CANSLIM Analysis</h2>
+        <div className="canslim-section">
+          <CANSLIMScoreComponent ticker={stock.ticker} />
+        </div>
+
+        {/* 50-Day Moving Average Section */}
+        <div className="section-divider"></div>
+        <h2>50-Day Moving Average</h2>
+        <div className="moving-average-section">
+          {loadingMA ? (
+            <div className="loading-state">Loading 50DMA data...</div>
+          ) : movingAverageData && movingAverageData.movingAverage50 ? (
+            <div className="ma-content">
+              <div className="ma-stats">
+                <div className="ma-stat-card">
+                  <div className="stat-label">Current Price</div>
+                  <div className="stat-value">{formatCurrency(movingAverageData.currentPrice)}</div>
+                </div>
+                <div className="ma-stat-card">
+                  <div className="stat-label">50-Day MA</div>
+                  <div className="stat-value">{formatCurrency(movingAverageData.movingAverage50)}</div>
+                </div>
+                <div className="ma-stat-card">
+                  <div className="stat-label">% Difference</div>
+                  <div className={`stat-value ${movingAverageData.percentageDifference && movingAverageData.percentageDifference >= 0 ? 'profit' : 'loss'}`}>
+                    {formatPercent(movingAverageData.percentageDifference)}
+                  </div>
+                </div>
+              </div>
+              <div className="ma-indicator">
+                <div className="indicator-bar">
+                  <div
+                    className={`indicator-fill ${movingAverageData.percentageDifference && movingAverageData.percentageDifference >= 0 ? 'above' : 'below'}`}
+                    style={{
+                      width: `${Math.min(Math.abs(movingAverageData.percentageDifference || 0) * 2, 100)}%`
+                    }}
+                  ></div>
+                </div>
+                <div className="indicator-label">
+                  {movingAverageData.percentageDifference && movingAverageData.percentageDifference >= 0
+                    ? '📈 Price is above 50-day MA (Bullish)'
+                    : '📉 Price is below 50-day MA (Bearish)'}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="no-data">Moving average data not available. Try refreshing.</div>
+          )}
+        </div>
+
         {/* Insider Activity Section */}
+        <div className="section-divider"></div>
+        <h2>Insider Activity</h2>
         <div className="insider-section">
-          <h2>Insider Activity</h2>
           {loadingInsiders ? (
             <div className="loading-state">Loading insider data...</div>
           ) : insiderData ? (
@@ -278,40 +523,42 @@ export function StockDetail() {
               <div className="insider-transactions">
                 <h3>Recent Transactions</h3>
                 {insiderData.transactions.length > 0 ? (
-                  <table className="insider-table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Insider</th>
-                        <th>Form</th>
-                        <th>Type</th>
-                        <th>Shares</th>
-                        <th>Price</th>
-                        <th>Source</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {insiderData.transactions.map((tx, idx) => (
-                        <tr key={idx}>
-                          <td>{tx.date ? new Date(tx.date).toLocaleDateString() : '-'}</td>
-                          <td>{tx.insider}</td>
-                          <td>{tx.formType}</td>
-                          <td>
-                            <span className={`transaction-type ${tx.type}`}>
-                              {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
-                            </span>
-                          </td>
-                          <td className="number">{tx.shares.toLocaleString()}</td>
-                          <td className="number">{tx.price ? formatCurrency(tx.price) : '-'}</td>
-                          <td>
-                            <a href={tx.source} target="_blank" rel="noopener noreferrer" className="source-link">
-                              SEC Filing
-                            </a>
-                          </td>
+                  <div className="table-wrapper">
+                    <table className="insider-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Insider</th>
+                          <th>Form</th>
+                          <th>Type</th>
+                          <th>Shares</th>
+                          <th>Price</th>
+                          <th>Source</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {insiderData.transactions.map((tx, idx) => (
+                          <tr key={idx}>
+                            <td>{tx.date ? new Date(tx.date).toLocaleDateString() : '-'}</td>
+                            <td>{tx.insider}</td>
+                            <td>{tx.formType}</td>
+                            <td>
+                              <span className={`transaction-type ${tx.type}`}>
+                                {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
+                              </span>
+                            </td>
+                            <td className="number">{tx.shares.toLocaleString()}</td>
+                            <td className="number">{tx.price ? formatCurrency(tx.price) : '-'}</td>
+                            <td>
+                              <a href={tx.source} target="_blank" rel="noopener noreferrer" className="source-link">
+                                SEC Filing
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <div className="no-data">No insider transactions found.</div>
                 )}
