@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { InsiderData, OwnershipData, MovingAverageData, CANSLIMScore } from '../types';
+import { PriceLineChart } from '../components/PriceLineChart';
+import { InsiderData, OwnershipData, MovingAverageData, CANSLIMScore, PriceHistoryPoint } from '../types';
 import OwnershipPieChart from '../components/OwnershipPieChart';
 import { CANSLIMScore as CANSLIMScoreComponent } from '../components/CANSLIMScore';
 import './StockDetail.css';
@@ -28,10 +29,12 @@ export function StockDetail() {
   const [stock, setStock] = useState<StockDetailData | null>(null);
   const [insiderData, setInsiderData] = useState<InsiderData | null>(null);
   const [ownershipData, setOwnershipData] = useState<OwnershipData | null>(null);
-  const [movingAverageData, setMovingAverageData] = useState<MovingAverageData | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingInsiders, setLoadingInsiders] = useState(true);
   const [loadingOwnership, setLoadingOwnership] = useState(true);
+  const [loadingPriceHistory, setLoadingPriceHistory] = useState(true);
+  const [movingAverageData, setMovingAverageData] = useState<MovingAverageData | null>(null);
   const [loadingMA, setLoadingMA] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -194,13 +197,26 @@ export function StockDetail() {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        navigate('/portfolio');
+  useEffect(() => {
+    if (!ticker) return;
+
+    const fetchPriceHistory = async () => {
+      try {
+        setLoadingPriceHistory(true);
+        const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(ticker)}&days=50`);
+        if (response.ok) {
+          const data = await response.json();
+          setPriceHistory(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch price history:', err);
+      } finally {
+        setLoadingPriceHistory(false);
       }
-    } catch (err) {
-      console.error('Failed to delete stock:', err);
-    }
-  };
+    };
+
+    fetchPriceHistory();
+  }, [ticker]);
 
   const formatCurrency = (value: number | undefined | null) => {
     if (value === undefined || value === null) return '-';
@@ -398,6 +414,20 @@ export function StockDetail() {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Price History Chart */}
+        <div className="price-history-section">
+          {loadingPriceHistory ? (
+            <div className="loading-state">Loading price history...</div>
+          ) : priceHistory.length > 0 ? (
+            <PriceLineChart
+              data={priceHistory.map(p => ({ date: p.date, close: p.close }))}
+              ticker={stock.ticker}
+            />
+          ) : (
+            <div className="no-data">Price history not available for this ticker.</div>
+          )}
         </div>
 
         {/* Ownership Distribution Section */}

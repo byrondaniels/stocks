@@ -62,6 +62,13 @@ export interface OwnershipData {
   timestamp: string;
 }
 
+export interface PriceHistoryPoint {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
 export interface MovingAverageData {
   currentPrice: number | null;
   movingAverage50: number | null;
