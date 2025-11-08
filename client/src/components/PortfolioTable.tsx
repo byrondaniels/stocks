@@ -1,4 +1,5 @@
 import { PortfolioStock } from '../types';
+import { InsiderActivity } from './InsiderActivity';
 
 interface PortfolioTableProps {
   stocks: PortfolioStock[];
@@ -39,6 +40,7 @@ export function PortfolioTable({ stocks, onRemove, onDetail }: PortfolioTablePro
             <th>Total Value</th>
             <th>Profit/Loss</th>
             <th>Profit/Loss %</th>
+            <th>Insider Activity</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -69,6 +71,9 @@ export function PortfolioTable({ stocks, onRemove, onDetail }: PortfolioTablePro
                 </td>
                 <td className={`number ${isProfitable ? 'profit' : 'loss'}`}>
                   {formatPercent(stock.profitLossPercent)}
+                </td>
+                <td className="insider-cell">
+                  <InsiderActivity summary={stock.insiderActivity} />
                 </td>
                 <td>
                   <div className="action-buttons">

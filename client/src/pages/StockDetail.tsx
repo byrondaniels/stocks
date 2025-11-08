@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { InsiderData } from '../types';
 
 interface StockDetailData {
   ticker: string;
@@ -16,7 +17,9 @@ export function StockDetail() {
   const { ticker } = useParams<{ ticker: string }>();
   const navigate = useNavigate();
   const [stock, setStock] = useState<StockDetailData | null>(null);
+  const [insiderData, setInsiderData] = useState<InsiderData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingInsiders, setLoadingInsiders] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,6 +47,27 @@ export function StockDetail() {
 
     fetchStockDetail();
   }, [ticker, navigate]);
+
+  useEffect(() => {
+    if (!ticker) return;
+
+    const fetchInsiderData = async () => {
+      try {
+        setLoadingInsiders(true);
+        const response = await fetch(`/api/insiders?ticker=${encodeURIComponent(ticker)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setInsiderData(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch insider data:', err);
+      } finally {
+        setLoadingInsiders(false);
+      }
+    };
+
+    fetchInsiderData();
+  }, [ticker]);
 
   const formatCurrency = (value: number | undefined) => {
     if (value === undefined) return '-';
@@ -152,6 +176,77 @@ export function StockDetail() {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Insider Activity Section */}
+        <div className="insider-section">
+          <h2>Insider Activity</h2>
+          {loadingInsiders ? (
+            <div className="loading-state">Loading insider data...</div>
+          ) : insiderData ? (
+            <>
+              <div className="insider-summary">
+                <div className="summary-item">
+                  <span className="summary-label">Total Buy Shares:</span>
+                  <span className="summary-value buy">{insiderData.summary.totalBuyShares.toLocaleString()}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Total Sell Shares:</span>
+                  <span className="summary-value sell">{insiderData.summary.totalSellShares.toLocaleString()}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Net Shares:</span>
+                  <span className={`summary-value ${insiderData.summary.netShares >= 0 ? 'buy' : 'sell'}`}>
+                    {insiderData.summary.netShares > 0 ? '+' : ''}{insiderData.summary.netShares.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="insider-transactions">
+                <h3>Recent Transactions</h3>
+                {insiderData.transactions.length > 0 ? (
+                  <table className="insider-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Insider</th>
+                        <th>Form</th>
+                        <th>Type</th>
+                        <th>Shares</th>
+                        <th>Price</th>
+                        <th>Source</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {insiderData.transactions.map((tx, idx) => (
+                        <tr key={idx}>
+                          <td>{tx.date ? new Date(tx.date).toLocaleDateString() : '-'}</td>
+                          <td>{tx.insider}</td>
+                          <td>{tx.formType}</td>
+                          <td>
+                            <span className={`transaction-type ${tx.type}`}>
+                              {tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}
+                            </span>
+                          </td>
+                          <td className="number">{tx.shares.toLocaleString()}</td>
+                          <td className="number">{tx.price ? formatCurrency(tx.price) : '-'}</td>
+                          <td>
+                            <a href={tx.source} target="_blank" rel="noopener noreferrer" className="source-link">
+                              SEC Filing
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="no-data">No insider transactions found.</div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="no-data">Insider data not available for this ticker.</div>
+          )}
         </div>
       </div>
     </div>

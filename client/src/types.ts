@@ -1,5 +1,31 @@
 // Portfolio data types matching the backend API
 
+export interface InsiderSummary {
+  totalBuyShares: number;
+  totalSellShares: number;
+  netShares: number;
+}
+
+export interface InsiderTransaction {
+  date: string | null;
+  insider: string;
+  formType: string;
+  transactionCode?: string;
+  type: "buy" | "sell" | "other";
+  shares: number;
+  price?: number | null;
+  securityTitle?: string;
+  source: string;
+  note?: string;
+}
+
+export interface InsiderData {
+  ticker: string;
+  cik: string;
+  summary: InsiderSummary;
+  transactions: InsiderTransaction[];
+}
+
 export interface PortfolioStock {
   ticker: string;
   shares: number;
@@ -8,6 +34,7 @@ export interface PortfolioStock {
   currentPrice?: number;
   profitLoss?: number;
   profitLossPercent?: number;
+  insiderActivity?: InsiderSummary;
 }
 
 export interface AddStockFormData {

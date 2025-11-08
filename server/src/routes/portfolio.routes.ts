@@ -15,6 +15,7 @@ import {
   getPriceHistorySummary,
   calculate50DMA,
 } from "../services/priceHistory.js";
+import { getInsiderTransactions } from "../services/sec/insider-service.js";
 
 const router = Router();
 
@@ -28,7 +29,7 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
   try {
     const portfolioStocks = await Portfolio.find().sort({ createdAt: -1 }).lean();
 
-    // Enrich each portfolio item with current price, profit/loss, and 50DMA stats
+    // Enrich each portfolio item with current price, profit/loss, 50DMA stats, and insider activity
     const enrichedPortfolio = await Promise.all(
       portfolioStocks.map(async (stock: any) => {
         try {
@@ -40,8 +41,11 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
           const profitLoss = (currentPrice - stock.purchasePrice) * stock.shares;
           const profitLossPercent = ((currentPrice - stock.purchasePrice) / stock.purchasePrice) * 100;
 
-          // Get 50DMA stats
-          const dmaStats = await calculate50DMA(stock.ticker);
+          // Get 50DMA stats and insider activity in parallel
+          const [dmaStats, insiderData] = await Promise.all([
+            calculate50DMA(stock.ticker),
+            getInsiderTransactions(stock.ticker).catch(() => null), // Don't fail if insider data unavailable
+          ]);
 
           return {
             ...stock,
@@ -52,10 +56,14 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
             percentageDifference: dmaStats.percentageDifference,
             priceCount: dmaStats.priceCount,
             latestDate: dmaStats.latestDate,
+            insiderActivity: insiderData?.summary || null,
           };
         } catch (error) {
           // If we can't get current price or DMA, return basic data
-          const dmaStats = await calculate50DMA(stock.ticker);
+          const [dmaStats, insiderData] = await Promise.all([
+            calculate50DMA(stock.ticker),
+            getInsiderTransactions(stock.ticker).catch(() => null),
+          ]);
           return {
             ...stock,
             currentPrice: dmaStats.currentPrice,
@@ -63,6 +71,7 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
             percentageDifference: dmaStats.percentageDifference,
             priceCount: dmaStats.priceCount,
             latestDate: dmaStats.latestDate,
+            insiderActivity: insiderData?.summary || null,
           };
         }
       })
