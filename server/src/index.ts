@@ -15,6 +15,7 @@ import {
   calculateMovingAverage,
   getPriceHistorySummary,
   getLatestStoredPrice,
+  calculate50DMA,
 } from "./services/priceHistory.js";
 import { connectToDatabase, InsiderTransaction, Portfolio } from "./db/index.js";
 
@@ -521,21 +522,18 @@ app.get("/api/portfolio", async (_req: Request, res: ExpressResponse) => {
   try {
     const portfolioStocks = await Portfolio.find().sort({ createdAt: -1 }).lean();
 
-    // Enrich each portfolio item with price history data
+    // Enrich each portfolio item with price history data and 50DMA stats
     const enrichedPortfolio = await Promise.all(
       portfolioStocks.map(async (stock: any) => {
-        const summary = await getPriceHistorySummary(stock.ticker);
-        const latestPrice = await getLatestStoredPrice(stock.ticker);
+        const dmaStats = await calculate50DMA(stock.ticker);
 
         return {
           ...stock,
-          priceHistory: {
-            priceCount: summary.priceCount,
-            oldestDate: summary.oldestDate,
-            latestDate: summary.latestDate,
-            movingAverage50: summary.movingAverage50,
-            latestClose: latestPrice?.close || null,
-          },
+          currentPrice: dmaStats.currentPrice,
+          movingAverage50: dmaStats.movingAverage50,
+          percentageDifference: dmaStats.percentageDifference,
+          priceCount: dmaStats.priceCount,
+          latestDate: dmaStats.latestDate,
         };
       })
     );

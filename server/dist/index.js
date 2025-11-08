@@ -2,7 +2,7 @@ import cors from "cors";
 import express from "express";
 import { XMLParser } from "fast-xml-parser";
 import { getCurrentPrice, getOwnershipData, getFinancialMetrics, getHistoricalPrices, getRateLimitStatus, clearAllCaches, } from "./services/stockData.js";
-import { fetchAndStoreHistoricalPrices, calculateMovingAverage, getPriceHistorySummary, getLatestStoredPrice, } from "./services/priceHistory.js";
+import { fetchAndStoreHistoricalPrices, calculateMovingAverage, getPriceHistorySummary, calculate50DMA, } from "./services/priceHistory.js";
 import { connectToDatabase, InsiderTransaction, Portfolio } from "./db/index.js";
 const PORT = process.env.PORT || 3001;
 const SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json";
@@ -373,19 +373,16 @@ app.get("/api/insiders", async (req, res) => {
 app.get("/api/portfolio", async (_req, res) => {
     try {
         const portfolioStocks = await Portfolio.find().sort({ createdAt: -1 }).lean();
-        // Enrich each portfolio item with price history data
+        // Enrich each portfolio item with price history data and 50DMA stats
         const enrichedPortfolio = await Promise.all(portfolioStocks.map(async (stock) => {
-            const summary = await getPriceHistorySummary(stock.ticker);
-            const latestPrice = await getLatestStoredPrice(stock.ticker);
+            const dmaStats = await calculate50DMA(stock.ticker);
             return {
                 ...stock,
-                priceHistory: {
-                    priceCount: summary.priceCount,
-                    oldestDate: summary.oldestDate,
-                    latestDate: summary.latestDate,
-                    movingAverage50: summary.movingAverage50,
-                    latestClose: latestPrice?.close || null,
-                },
+                currentPrice: dmaStats.currentPrice,
+                movingAverage50: dmaStats.movingAverage50,
+                percentageDifference: dmaStats.percentageDifference,
+                priceCount: dmaStats.priceCount,
+                latestDate: dmaStats.latestDate,
             };
         }));
         res.json({
@@ -714,10 +711,6 @@ app.post("/api/stock/clear-cache", (_req, res) => {
     res.json({ success: true, message: "All caches cleared" });
 });
 // ============================================================================
-app.listen(PORT, () => {
-    console.log(`Insider transactions API listening on port ${PORT}`);
-    console.log(`Stock data API endpoints available at /api/stock/*`);
-});
 // Portfolio CRUD API Endpoints
 // ============================================================================
 // GET /api/portfolio - List all stocks in portfolio
