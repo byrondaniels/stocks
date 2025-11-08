@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { XMLParser } from "fast-xml-parser";
+import { getCurrentPrice, getOwnershipData, getFinancialMetrics, getHistoricalPrices, getRateLimitStatus, clearAllCaches, } from "./services/stockData.js";
 import { connectToDatabase, InsiderTransaction } from "./db/index.js";
 const PORT = process.env.PORT || 3001;
 const SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json";
@@ -360,6 +361,157 @@ app.get("/api/insiders", async (req, res) => {
         });
     }
 });
+// ============================================================================
+// Stock Data API Endpoints
+// ============================================================================
+app.get("/api/stock/price", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        const price = await getCurrentPrice(ticker);
+        res.json(price);
+    }
+    catch (error) {
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        console.error(error);
+        res.status(502).json({
+            error: "Unable to retrieve stock price from external APIs.",
+        });
+    }
+});
+app.get("/api/stock/ownership", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        const ownership = await getOwnershipData(ticker);
+        res.json(ownership);
+    }
+    catch (error) {
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        console.error(error);
+        res.status(502).json({
+            error: "Unable to retrieve ownership data from external APIs.",
+        });
+    }
+});
+app.get("/api/stock/financials", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        const financials = await getFinancialMetrics(ticker);
+        res.json(financials);
+    }
+    catch (error) {
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        console.error(error);
+        res.status(502).json({
+            error: "Unable to retrieve financial metrics from external APIs.",
+        });
+    }
+});
+app.get("/api/stock/historical", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    const rawDays = req.query.days ?? "50";
+    const days = parseInt(rawDays, 10);
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    if (isNaN(days) || days < 1 || days > 365) {
+        res.status(400).json({
+            error: "Invalid days parameter. Must be between 1 and 365.",
+        });
+        return;
+    }
+    try {
+        const historical = await getHistoricalPrices(ticker, days);
+        res.json(historical);
+    }
+    catch (error) {
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        console.error(error);
+        res.status(502).json({
+            error: "Unable to retrieve historical prices from external APIs.",
+        });
+    }
+});
+app.get("/api/stock/rate-limits", (_req, res) => {
+    const status = getRateLimitStatus();
+    res.json(status);
+});
+app.post("/api/stock/clear-cache", (_req, res) => {
+    clearAllCaches();
+    res.json({ success: true, message: "All caches cleared" });
+});
+// ============================================================================
+app.listen(PORT, () => {
+    console.log(`Insider transactions API listening on port ${PORT}`);
+    console.log(`Stock data API endpoints available at /api/stock/*`);
 // Connect to MongoDB and start server
 connectToDatabase()
     .then(() => {
