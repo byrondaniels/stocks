@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { Low } from "lowdb";
 import { JSONFile } from "lowdb/node";
 import { XMLParser } from "fast-xml-parser";
+import { getCurrentPrice, getOwnershipData, getFinancialMetrics, getHistoricalPrices, getRateLimitStatus, clearAllCaches, } from "./services/stockData.js";
 const PORT = process.env.PORT || 3001;
 const SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json";
 const SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/";
@@ -53,7 +54,19 @@ async function politeFetch(url, init = {}) {
         Accept: "application/json",
         ...init.headers,
     };
-    const response = await fetch(url, { ...init, headers });
+    const method = typeof init.method === "string" && init.method.length > 0
+        ? init.method.toUpperCase()
+        : "GET";
+    console.log(`[SEC] Request: ${method} ${url}`);
+    let response;
+    try {
+        response = await fetch(url, { ...init, headers });
+    }
+    catch (error) {
+        console.error(`[SEC] Network error for ${method} ${url}`, error);
+        throw error;
+    }
+    console.log(`[SEC] Response: ${method} ${url} -> ${response.status} ${response.statusText}`);
     if (!response.ok) {
         throw new Error(`SEC request failed (${response.status} ${response.statusText})`);
     }
@@ -254,7 +267,8 @@ function parseOwnershipXml(xml, filing, cik) {
 function buildFilingDocumentUrl(cik, filing) {
     const numericCik = String(Number.parseInt(cik, 10));
     const accessionPath = filing.accessionNumber.replace(/-/g, "");
-    return `${SEC_ARCHIVES_URL}/${numericCik}/${accessionPath}/${filing.primaryDocument}`;
+    const cleanedDocument = filing.primaryDocument.replace(/^xslF[^/]+\//i, "");
+    return `${SEC_ARCHIVES_URL}/${numericCik}/${accessionPath}/${cleanedDocument}`;
 }
 async function fetchOwnershipDocument(cik, filing) {
     const url = buildFilingDocumentUrl(cik, filing);
@@ -364,8 +378,157 @@ app.get("/api/insiders", async (req, res) => {
         });
     }
 });
+// ============================================================================
+// Stock Data API Endpoints
+// ============================================================================
+app.get("/api/stock/price", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        const price = await getCurrentPrice(ticker);
+        res.json(price);
+    }
+    catch (error) {
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        console.error(error);
+        res.status(502).json({
+            error: "Unable to retrieve stock price from external APIs.",
+        });
+    }
+});
+app.get("/api/stock/ownership", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        const ownership = await getOwnershipData(ticker);
+        res.json(ownership);
+    }
+    catch (error) {
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        console.error(error);
+        res.status(502).json({
+            error: "Unable to retrieve ownership data from external APIs.",
+        });
+    }
+});
+app.get("/api/stock/financials", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    try {
+        const financials = await getFinancialMetrics(ticker);
+        res.json(financials);
+    }
+    catch (error) {
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        console.error(error);
+        res.status(502).json({
+            error: "Unable to retrieve financial metrics from external APIs.",
+        });
+    }
+});
+app.get("/api/stock/historical", async (req, res) => {
+    const rawTicker = req.query.ticker ?? "";
+    const ticker = rawTicker.trim().toUpperCase();
+    const rawDays = req.query.days ?? "50";
+    const days = parseInt(rawDays, 10);
+    if (!ticker || !TICKER_REGEX.test(ticker)) {
+        res.status(400).json({
+            error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
+        });
+        return;
+    }
+    if (isNaN(days) || days < 1 || days > 365) {
+        res.status(400).json({
+            error: "Invalid days parameter. Must be between 1 and 365.",
+        });
+        return;
+    }
+    try {
+        const historical = await getHistoricalPrices(ticker, days);
+        res.json(historical);
+    }
+    catch (error) {
+        const apiError = error;
+        if (apiError.code === "RATE_LIMIT") {
+            res.status(429).json({
+                error: apiError.message,
+                retryAfter: apiError.retryAfter,
+            });
+            return;
+        }
+        if (apiError.code === "NOT_FOUND") {
+            res.status(404).json({ error: apiError.message });
+            return;
+        }
+        console.error(error);
+        res.status(502).json({
+            error: "Unable to retrieve historical prices from external APIs.",
+        });
+    }
+});
+app.get("/api/stock/rate-limits", (_req, res) => {
+    const status = getRateLimitStatus();
+    res.json(status);
+});
+app.post("/api/stock/clear-cache", (_req, res) => {
+    clearAllCaches();
+    res.json({ success: true, message: "All caches cleared" });
+});
+// ============================================================================
 app.listen(PORT, () => {
     console.log(`Insider transactions API listening on port ${PORT}`);
+    console.log(`Stock data API endpoints available at /api/stock/*`);
 });
 async function readStoredInsider(ticker) {
     try {

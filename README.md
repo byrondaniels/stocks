@@ -1,21 +1,63 @@
 # Stocks Insider Proof of Concept
 
-This project demonstrates a TypeScript full-stack application that surfaces recent insider transactions (Forms 3/4/5) filed with the U.S. SEC. Data is loaded directly from the public SEC endpoints without any paid APIs or persistence.
+This project demonstrates a TypeScript full-stack application that provides comprehensive stock data including:
+- Recent insider transactions (Forms 3/4/5) from the U.S. SEC
+- Current stock prices and historical data
+- Ownership breakdown (insider/institutional/public)
+- Financial metrics for CANSLIM analysis
 
 ## Project layout
 
-- `server` – Express + TypeScript API that fetches SEC data, normalizes transactions, and applies polite rate limiting with a descriptive User-Agent.
-- `client` – Vite + React TypeScript single-page app with ticker validation and transaction tables.
+- `server` – Express + TypeScript API that integrates multiple data sources with intelligent caching and rate limiting
+- `client` – Vite + React TypeScript single-page app with ticker validation and transaction tables
 
 ## Prerequisites
 
 - Node.js 18+
 - npm
 
-To follow SEC guidance, set a descriptive User-Agent string before running the API:
+## API Keys Setup
+
+This application integrates with multiple free-tier stock data APIs. You'll need to sign up for API keys:
+
+### Required API Keys
+
+1. **Alpha Vantage** (Stock prices & historical data)
+   - Sign up: https://www.alphavantage.co/support/#api-key
+   - Free tier: 25 requests/day
+   - Used for: Current prices, historical OHLCV data
+
+2. **Financial Modeling Prep** (Ownership & financial metrics)
+   - Sign up: https://site.financialmodelingprep.com/developer/docs
+   - Free tier: 250 requests/day
+   - Used for: Ownership data, financial ratios, CANSLIM metrics
+
+3. **SEC Edgar API** (Insider transactions)
+   - No API key required
+   - Requires User-Agent header with contact info
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and add your API keys:
 
 ```bash
-export SEC_USER_AGENT="stocks-insider-poc/1.0 (byrondaniels@gmail.com)"
+cp .env.example .env
+```
+
+Then edit `.env` with your credentials:
+
+```bash
+# SEC Edgar API Configuration
+SEC_USER_AGENT="stocks-insider-poc/1.0 (your-email@example.com)"
+
+# Alpha Vantage API Key
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_api_key_here
+
+# Financial Modeling Prep API Key
+FMP_API_KEY=your_fmp_api_key_here
+
+# Server Configuration
+PORT=3001
 ```
 
 ## Running the API (`/server`)
@@ -28,7 +70,38 @@ npm run dev
 
 The development server starts on http://localhost:3001.
 
-The API caches SEC responses in-memory and also persists normalized insider lookups to `server/data/insiders.json` using LowDB. Cached entries are considered fresh for 24 hours; remove the file if you want to force a refresh.
+### API Endpoints
+
+The server provides the following endpoints:
+
+**Insider Transactions:**
+- `GET /api/insiders?ticker=AAPL` - Get recent insider transactions
+
+**Stock Data:**
+- `GET /api/stock/price?ticker=AAPL` - Get current stock price
+- `GET /api/stock/ownership?ticker=AAPL` - Get ownership breakdown
+- `GET /api/stock/financials?ticker=AAPL` - Get financial metrics (CANSLIM)
+- `GET /api/stock/historical?ticker=AAPL&days=50` - Get historical prices
+- `GET /api/stock/rate-limits` - Check API rate limit status
+- `POST /api/stock/clear-cache` - Clear all cached data
+
+### Caching Strategy
+
+The API implements intelligent caching to minimize external API calls:
+- **Stock prices**: Cached for 1 hour
+- **Ownership data**: Cached for 24 hours
+- **Financial metrics**: Cached for 24 hours
+- **Historical prices**: Cached for 1 hour
+- **Insider transactions**: Persisted to `server/data/insiders.json` for 24 hours
+
+### Rate Limiting
+
+The server enforces rate limits to prevent quota exhaustion:
+- Alpha Vantage: Max 25 requests/day, 12-second interval between requests
+- FMP: Max 250 requests/day, 12-second interval between requests
+- SEC: 250ms politeness delay between requests
+
+When rate limits are exceeded, the API returns a 429 status with `retryAfter` information.
 
 ## Running the client (`/client`)
 
