@@ -1,0 +1,83 @@
+.ownership-chart-container {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ownership-chart-container h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.ownership-metadata {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.ownership-source {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 5px 0;
+}
+
+.ownership-timestamp {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 5px 0;
+}
+
+.ownership-shares-info {
+  display: flex;
+  gap: 30px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.ownership-shares-info p {
+  font-size: 0.875rem;
+  color: #444;
+  margin: 5px 0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .ownership-chart-container {
+    padding: 15px;
+  }
+
+  .ownership-shares-info {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  .ownership-chart-container {
+    background: #1e1e1e;
+    color: #e0e0e0;
+  }
+
+  .ownership-chart-container h3 {
+    color: #e0e0e0;
+  }
+
+  .ownership-metadata {
+    border-top-color: #444;
+  }
+
+  .ownership-source,
+  .ownership-timestamp {
+    color: #aaa;
+  }
+
+  .ownership-shares-info p {
+    color: #ccc;
+  }
+}
