@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { InsiderData } from '../types';
+import { InsiderData, OwnershipData } from '../types';
+import OwnershipPieChart from '../components/OwnershipPieChart';
 
 interface StockDetailData {
   ticker: string;
@@ -18,8 +19,10 @@ export function StockDetail() {
   const navigate = useNavigate();
   const [stock, setStock] = useState<StockDetailData | null>(null);
   const [insiderData, setInsiderData] = useState<InsiderData | null>(null);
+  const [ownershipData, setOwnershipData] = useState<OwnershipData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingInsiders, setLoadingInsiders] = useState(true);
+  const [loadingOwnership, setLoadingOwnership] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,6 +70,27 @@ export function StockDetail() {
     };
 
     fetchInsiderData();
+  }, [ticker]);
+
+  useEffect(() => {
+    if (!ticker) return;
+
+    const fetchOwnershipData = async () => {
+      try {
+        setLoadingOwnership(true);
+        const response = await fetch(`/api/stock/ownership?ticker=${encodeURIComponent(ticker)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setOwnershipData(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch ownership data:', err);
+      } finally {
+        setLoadingOwnership(false);
+      }
+    };
+
+    fetchOwnershipData();
   }, [ticker]);
 
   const formatCurrency = (value: number | undefined) => {
@@ -176,6 +200,17 @@ export function StockDetail() {
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Ownership Distribution Section */}
+        <div className="ownership-section">
+          {loadingOwnership ? (
+            <div className="loading-state">Loading ownership data...</div>
+          ) : ownershipData ? (
+            <OwnershipPieChart ownershipData={ownershipData} />
+          ) : (
+            <div className="no-data">Ownership data not available for this ticker.</div>
+          )}
         </div>
 
         {/* Insider Activity Section */}

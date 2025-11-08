@@ -50,3 +50,14 @@ export interface PortfolioSummary {
   totalGainLoss: number;
   totalGainLossPercent: number;
 }
+
+export interface OwnershipData {
+  ticker: string;
+  insiderOwnership: number; // percentage
+  institutionalOwnership: number; // percentage
+  publicOwnership: number; // percentage
+  floatShares: number;
+  sharesOutstanding: number;
+  source: 'fmp' | 'sec';
+  timestamp: string;
+}
