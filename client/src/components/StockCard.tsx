@@ -2,15 +2,20 @@ import { useState, useEffect } from 'react';
 import { PortfolioStock, PriceHistoryPoint } from '../types';
 import { PriceLineChart } from './PriceLineChart';
 import { InsiderActivity } from './InsiderActivity';
+import { RefreshButton } from './RefreshButton';
+import { formatDate } from '../utils/formatters';
 import './StockCard.css';
 
 interface StockCardProps {
   stock: PortfolioStock;
   onRemove: (ticker: string) => void;
   onDetail: (ticker: string) => void;
+  onRefresh?: (ticker: string) => Promise<void>;
+  refreshing?: boolean;
+  cooldownSeconds?: number;
 }
 
-export function StockCard({ stock, onRemove, onDetail }: StockCardProps) {
+export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, cooldownSeconds }: StockCardProps) {
   const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -67,6 +72,14 @@ export function StockCard({ stock, onRemove, onDetail }: StockCardProps) {
           <div className="stock-shares">{stock.shares} shares</div>
         </div>
         <div className="stock-actions">
+          {onRefresh && (
+            <RefreshButton
+              onClick={() => onRefresh(stock.ticker)}
+              loading={refreshing}
+              disabled={refreshing || (cooldownSeconds !== undefined && cooldownSeconds > 0)}
+              size="small"
+            />
+          )}
           <button
             className="btn-card-detail"
             onClick={() => onDetail(stock.ticker)}
@@ -120,6 +133,13 @@ export function StockCard({ stock, onRemove, onDetail }: StockCardProps) {
         <div className="stock-card-footer">
           <span className="footer-label">Insider Activity:</span>
           <InsiderActivity summary={stock.insiderActivity} />
+        </div>
+      )}
+
+      {stock.lastUpdated && (
+        <div className="stock-card-updated">
+          <span className="updated-label">Last Updated:</span>
+          <span className="updated-time">{formatDate(stock.lastUpdated)}</span>
         </div>
       )}
     </div>

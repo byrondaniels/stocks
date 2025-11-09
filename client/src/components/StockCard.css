@@ -148,6 +148,26 @@
   font-weight: 500;
 }
 
+.stock-card-updated {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.updated-label {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.updated-time {
+  color: #64748b;
+  font-weight: 600;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .stock-card {

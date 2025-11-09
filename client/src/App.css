@@ -662,7 +662,18 @@ a:hover {
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-toggle-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.refresh-all-container {
+  display: flex;
+  align-items: center;
 }
 
 .toggle-btn {

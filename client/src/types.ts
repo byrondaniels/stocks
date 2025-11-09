@@ -35,6 +35,7 @@ export interface PortfolioStock {
   profitLoss?: number;
   profitLossPercent?: number;
   insiderActivity?: InsiderSummary;
+  lastUpdated?: string;
 }
 
 export interface AddStockFormData {
@@ -69,6 +70,8 @@ export interface PriceHistoryPoint {
   low: number;
   close: number;
   volume: number;
+}
+
 export interface MovingAverageData {
   currentPrice: number | null;
   movingAverage50: number | null;

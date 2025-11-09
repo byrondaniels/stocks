@@ -1,13 +1,18 @@
 import { PortfolioStock } from '../types';
 import { InsiderActivity } from './InsiderActivity';
+import { RefreshButton } from './RefreshButton';
+import { formatDate } from '../utils/formatters';
 
 interface PortfolioTableProps {
   stocks: PortfolioStock[];
   onRemove: (ticker: string) => void;
   onDetail: (ticker: string) => void;
+  onRefresh?: (ticker: string) => Promise<void>;
+  refreshingStock?: string | null;
+  cooldowns?: Record<string, number>;
 }
 
-export function PortfolioTable({ stocks, onRemove, onDetail }: PortfolioTableProps) {
+export function PortfolioTable({ stocks, onRemove, onDetail, onRefresh, refreshingStock, cooldowns = {} }: PortfolioTableProps) {
   const formatCurrency = (value: number | undefined) => {
     if (value === undefined) return '-';
     return new Intl.NumberFormat(undefined, {
@@ -21,10 +26,6 @@ export function PortfolioTable({ stocks, onRemove, onDetail }: PortfolioTablePro
   const formatPercent = (value: number | undefined) => {
     if (value === undefined) return '-';
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
   };
 
   return (
@@ -41,6 +42,7 @@ export function PortfolioTable({ stocks, onRemove, onDetail }: PortfolioTablePro
             <th>Profit/Loss</th>
             <th>Profit/Loss %</th>
             <th>Insider Activity</th>
+            <th>Last Updated</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -75,8 +77,19 @@ export function PortfolioTable({ stocks, onRemove, onDetail }: PortfolioTablePro
                 <td className="insider-cell">
                   <InsiderActivity summary={stock.insiderActivity} />
                 </td>
+                <td className="updated-cell">
+                  {stock.lastUpdated ? formatDate(stock.lastUpdated) : '-'}
+                </td>
                 <td>
                   <div className="action-buttons">
+                    {onRefresh && (
+                      <RefreshButton
+                        onClick={() => onRefresh(stock.ticker)}
+                        loading={refreshingStock === stock.ticker}
+                        disabled={refreshingStock === stock.ticker || (cooldowns[stock.ticker] !== undefined && cooldowns[stock.ticker] > 0)}
+                        size="small"
+                      />
+                    )}
                     <button
                       className="btn-detail"
                       onClick={() => onDetail(stock.ticker)}
