@@ -4,9 +4,7 @@
 
 import { politeFetch } from "./utils.js";
 import { CompanySubmissions, RecentFiling } from "./types.js";
-
-const SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/";
-const SUBMISSION_CACHE_MS = 15 * 60 * 1000;
+import { SEC_CONFIG } from "../../constants.js";
 
 const submissionCache = new Map<
   string,
@@ -17,10 +15,10 @@ export async function fetchCompanySubmissions(
   cik: string
 ): Promise<CompanySubmissions> {
   const cached = submissionCache.get(cik);
-  if (cached && Date.now() - cached.timestamp < SUBMISSION_CACHE_MS) {
+  if (cached && Date.now() - cached.timestamp < SEC_CONFIG.SUBMISSION_CACHE_MS) {
     return cached.data;
   }
-  const url = `${SEC_SUBMISSIONS_URL}CIK${cik}.json`;
+  const url = `${SEC_CONFIG.SUBMISSIONS_URL}CIK${cik}.json`;
   const response = await politeFetch(url);
   const data = (await response.json()) as CompanySubmissions;
   submissionCache.set(cik, { timestamp: Date.now(), data });

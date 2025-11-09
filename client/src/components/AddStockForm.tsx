@@ -1,12 +1,11 @@
 import { FormEvent, useState } from 'react';
 import { AddStockFormData } from '../types';
+import { TICKER_REGEX, normalizeTicker } from '../utils/validation';
 
 interface AddStockFormProps {
   onAdd: (data: AddStockFormData) => Promise<void>;
   loading: boolean;
 }
-
-const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
 
 export function AddStockForm({ onAdd, loading }: AddStockFormProps) {
   const [formData, setFormData] = useState<AddStockFormData>({
@@ -21,7 +20,7 @@ export function AddStockForm({ onAdd, loading }: AddStockFormProps) {
     const newErrors: Partial<Record<keyof AddStockFormData, string>> = {};
 
     // Validate ticker
-    const trimmedTicker = formData.ticker.trim().toUpperCase();
+    const trimmedTicker = normalizeTicker(formData.ticker);
     if (!trimmedTicker) {
       newErrors.ticker = 'Ticker is required';
     } else if (!TICKER_REGEX.test(trimmedTicker)) {
@@ -71,7 +70,7 @@ export function AddStockForm({ onAdd, loading }: AddStockFormProps) {
     try {
       await onAdd({
         ...formData,
-        ticker: formData.ticker.trim().toUpperCase(),
+        ticker: normalizeTicker(formData.ticker),
       });
 
       // Reset form on success

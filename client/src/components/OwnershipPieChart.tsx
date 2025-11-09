@@ -1,16 +1,17 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { OwnershipData } from '../types';
+import { CHART_COLORS } from '../constants';
 import './OwnershipPieChart.css';
 
 interface OwnershipPieChartProps {
   ownershipData: OwnershipData;
 }
 
-const COLORS = {
-  institutional: '#0088FE',
-  insider: '#00C49F',
-  public: '#FFBB28',
-};
+const COLORS = [
+  CHART_COLORS.INSTITUTIONAL,
+  CHART_COLORS.INSIDER,
+  CHART_COLORS.PUBLIC,
+];
 
 const OwnershipPieChart: React.FC<OwnershipPieChartProps> = ({ ownershipData }) => {
   const data = [
@@ -53,7 +54,7 @@ const OwnershipPieChart: React.FC<OwnershipPieChartProps> = ({ ownershipData }) 
             dataKey="value"
           >
             {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={Object.values(COLORS)[index]} />
+              <Cell key={`cell-${index}`} fill={COLORS[index]} />
             ))}
           </Pie>
           <Tooltip

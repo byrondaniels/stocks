@@ -3,15 +3,14 @@
  */
 
 import { politeFetch } from "./utils.js";
-
-const SEC_TICKER_URL = "https://www.sec.gov/files/company_tickers.json";
+import { SEC_CONFIG } from "../../constants.js";
 
 let tickerMapPromise: Promise<Map<string, string>> | null = null;
 
 export async function loadTickerMap(): Promise<Map<string, string>> {
   if (!tickerMapPromise) {
     tickerMapPromise = (async () => {
-      const response = await politeFetch(SEC_TICKER_URL);
+      const response = await politeFetch(SEC_CONFIG.TICKER_URL);
       const payload = (await response.json()) as Record<
         string,
         { ticker: string; cik_str: number }

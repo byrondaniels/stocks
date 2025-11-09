@@ -13,10 +13,17 @@ import {
   clearAllCaches,
   type ApiError,
 } from "../services/stockData.js";
+import {
+  HTTP_STATUS,
+  ERROR_MESSAGES,
+  HISTORICAL_DAYS_DEFAULT,
+  HISTORICAL_DAYS_MIN,
+  HISTORICAL_DAYS_MAX,
+} from "../constants.js";
+import { normalizeTicker, isValidTicker } from "../utils/validation.js";
+import { handleApiError, sendBadRequest } from "../utils/errorHandler.js";
 
 const router = Router();
-
-const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
 
 /**
  * GET /api/stock/price?ticker=AAPL
@@ -24,12 +31,10 @@ const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
  */
 router.get("/price", async (req: Request, res: ExpressResponse) => {
   const rawTicker = (req.query.ticker as string | undefined) ?? "";
-  const ticker = rawTicker.trim().toUpperCase();
+  const ticker = normalizeTicker(rawTicker);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
@@ -37,22 +42,8 @@ router.get("/price", async (req: Request, res: ExpressResponse) => {
     const price = await getCurrentPrice(ticker);
     res.json(price);
   } catch (error) {
-    const apiError = error as ApiError;
-    if (apiError.code === "RATE_LIMIT") {
-      res.status(429).json({
-        error: apiError.message,
-        retryAfter: apiError.retryAfter,
-      });
-      return;
-    }
-    if (apiError.code === "NOT_FOUND") {
-      res.status(404).json({ error: apiError.message });
-      return;
-    }
     console.error(error);
-    res.status(502).json({
-      error: "Unable to retrieve stock price from external APIs.",
-    });
+    handleApiError(res, error, ERROR_MESSAGES.STOCK_DATA_ERROR);
   }
 });
 
@@ -62,12 +53,10 @@ router.get("/price", async (req: Request, res: ExpressResponse) => {
  */
 router.get("/ownership", async (req: Request, res: ExpressResponse) => {
   const rawTicker = (req.query.ticker as string | undefined) ?? "";
-  const ticker = rawTicker.trim().toUpperCase();
+  const ticker = normalizeTicker(rawTicker);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
@@ -75,22 +64,8 @@ router.get("/ownership", async (req: Request, res: ExpressResponse) => {
     const ownership = await getOwnershipData(ticker);
     res.json(ownership);
   } catch (error) {
-    const apiError = error as ApiError;
-    if (apiError.code === "RATE_LIMIT") {
-      res.status(429).json({
-        error: apiError.message,
-        retryAfter: apiError.retryAfter,
-      });
-      return;
-    }
-    if (apiError.code === "NOT_FOUND") {
-      res.status(404).json({ error: apiError.message });
-      return;
-    }
     console.error(error);
-    res.status(502).json({
-      error: "Unable to retrieve ownership data from external APIs.",
-    });
+    handleApiError(res, error, ERROR_MESSAGES.OWNERSHIP_DATA_ERROR);
   }
 });
 
@@ -100,12 +75,10 @@ router.get("/ownership", async (req: Request, res: ExpressResponse) => {
  */
 router.get("/financials", async (req: Request, res: ExpressResponse) => {
   const rawTicker = (req.query.ticker as string | undefined) ?? "";
-  const ticker = rawTicker.trim().toUpperCase();
+  const ticker = normalizeTicker(rawTicker);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
@@ -113,22 +86,8 @@ router.get("/financials", async (req: Request, res: ExpressResponse) => {
     const financials = await getFinancialMetrics(ticker);
     res.json(financials);
   } catch (error) {
-    const apiError = error as ApiError;
-    if (apiError.code === "RATE_LIMIT") {
-      res.status(429).json({
-        error: apiError.message,
-        retryAfter: apiError.retryAfter,
-      });
-      return;
-    }
-    if (apiError.code === "NOT_FOUND") {
-      res.status(404).json({ error: apiError.message });
-      return;
-    }
     console.error(error);
-    res.status(502).json({
-      error: "Unable to retrieve financial metrics from external APIs.",
-    });
+    handleApiError(res, error, "Unable to retrieve financial metrics from external APIs.");
   }
 });
 
@@ -138,21 +97,17 @@ router.get("/financials", async (req: Request, res: ExpressResponse) => {
  */
 router.get("/historical", async (req: Request, res: ExpressResponse) => {
   const rawTicker = (req.query.ticker as string | undefined) ?? "";
-  const ticker = rawTicker.trim().toUpperCase();
-  const rawDays = (req.query.days as string | undefined) ?? "50";
+  const ticker = normalizeTicker(rawTicker);
+  const rawDays = (req.query.days as string | undefined) ?? String(HISTORICAL_DAYS_DEFAULT);
   const days = parseInt(rawDays, 10);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
-  if (isNaN(days) || days < 1 || days > 365) {
-    res.status(400).json({
-      error: "Invalid days parameter. Must be between 1 and 365.",
-    });
+  if (isNaN(days) || days < HISTORICAL_DAYS_MIN || days > HISTORICAL_DAYS_MAX) {
+    sendBadRequest(res, `Invalid days parameter. Must be between ${HISTORICAL_DAYS_MIN} and ${HISTORICAL_DAYS_MAX}.`);
     return;
   }
 
@@ -160,22 +115,8 @@ router.get("/historical", async (req: Request, res: ExpressResponse) => {
     const historical = await getHistoricalPrices(ticker, days);
     res.json(historical);
   } catch (error) {
-    const apiError = error as ApiError;
-    if (apiError.code === "RATE_LIMIT") {
-      res.status(429).json({
-        error: apiError.message,
-        retryAfter: apiError.retryAfter,
-      });
-      return;
-    }
-    if (apiError.code === "NOT_FOUND") {
-      res.status(404).json({ error: apiError.message });
-      return;
-    }
     console.error(error);
-    res.status(502).json({
-      error: "Unable to retrieve historical prices from external APIs.",
-    });
+    handleApiError(res, error, ERROR_MESSAGES.HISTORICAL_DATA_ERROR);
   }
 });
 

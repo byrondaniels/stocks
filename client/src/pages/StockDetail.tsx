@@ -4,6 +4,8 @@ import { PriceLineChart } from '../components/PriceLineChart';
 import { InsiderData, OwnershipData, MovingAverageData, CANSLIMScore, PriceHistoryPoint } from '../types';
 import OwnershipPieChart from '../components/OwnershipPieChart';
 import { CANSLIMScore as CANSLIMScoreComponent } from '../components/CANSLIMScore';
+import { formatCurrency } from '../utils/formatters';
+import { HISTORICAL_DAYS_DEFAULT } from '../constants';
 import './StockDetail.css';
 
 interface StockDetailData {
@@ -109,7 +111,7 @@ export function StockDetail() {
 
     try {
       setLoadingMA(true);
-      const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(ticker)}&days=50`);
+      const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(ticker)}&days=${HISTORICAL_DAYS_DEFAULT}`);
       if (response.ok) {
         const data = await response.json();
         // Calculate 50DMA from historical data
@@ -214,7 +216,7 @@ export function StockDetail() {
     const fetchPriceHistory = async () => {
       try {
         setLoadingPriceHistory(true);
-        const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(ticker)}&days=50`);
+        const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(ticker)}&days=${HISTORICAL_DAYS_DEFAULT}`);
         if (response.ok) {
           const data = await response.json();
           setPriceHistory(data);
@@ -228,16 +230,6 @@ export function StockDetail() {
 
     fetchPriceHistory();
   }, [ticker]);
-
-  const formatCurrency = (value: number | undefined | null) => {
-    if (value === undefined || value === null) return '-';
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
 
   const formatPercent = (value: number | undefined | null) => {
     if (value === undefined || value === null) return '-';
