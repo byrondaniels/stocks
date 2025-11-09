@@ -16,7 +16,8 @@ NC := \033[0m # No Color
 .PHONY: server-install server-build server-dev server-test
 .PHONY: client-install client-build client-dev
 .PHONY: build dev test test-watch test-coverage
-.PHONY: mongo-start mongo-stop mongo-status
+.PHONY: docker-up docker-down docker-restart docker-logs docker-status docker-clean
+.PHONY: mongo-start mongo-stop mongo-status mongo-shell
 .PHONY: logs check-env
 
 # Default target - show help
@@ -47,10 +48,14 @@ help: ## Show this help message
 	@echo "  make test-watch         Run tests in watch mode"
 	@echo "  make test-coverage      Run tests with coverage report"
 	@echo ""
-	@echo "$(GREEN)Database:$(NC)"
-	@echo "  make mongo-start        Start MongoDB (macOS/Linux)"
-	@echo "  make mongo-stop         Stop MongoDB (macOS/Linux)"
-	@echo "  make mongo-status       Check MongoDB status"
+	@echo "$(GREEN)Database (Docker):$(NC)"
+	@echo "  make docker-up          Start MongoDB in Docker container"
+	@echo "  make docker-down        Stop and remove MongoDB container"
+	@echo "  make docker-restart     Restart MongoDB container"
+	@echo "  make docker-logs        View MongoDB container logs"
+	@echo "  make docker-status      Check MongoDB container status"
+	@echo "  make docker-clean       Remove MongoDB container and volumes"
+	@echo "  make mongo-shell        Open MongoDB shell"
 	@echo ""
 	@echo "$(GREEN)Utilities:$(NC)"
 	@echo "  make install            Install dependencies for both projects"
@@ -80,20 +85,25 @@ setup: ## Complete first-time setup
 	@echo "$(YELLOW)Step 2/3: Installing dependencies...$(NC)"
 	@$(MAKE) install
 	@echo ""
-	@echo "$(YELLOW)Step 3/3: Checking MongoDB...$(NC)"
-	@if command -v mongod >/dev/null 2>&1; then \
-		echo "$(GREEN)✓ MongoDB is installed$(NC)"; \
-		$(MAKE) mongo-status; \
+	@echo "$(YELLOW)Step 3/3: Checking Docker...$(NC)"
+	@if command -v docker >/dev/null 2>&1; then \
+		echo "$(GREEN)✓ Docker is installed$(NC)"; \
+		if command -v docker-compose >/dev/null 2>&1 || docker compose version >/dev/null 2>&1; then \
+			echo "$(GREEN)✓ Docker Compose is available$(NC)"; \
+		else \
+			echo "$(RED)✗ Docker Compose is not installed$(NC)"; \
+			echo "$(YELLOW)Install Docker Compose: https://docs.docker.com/compose/install/$(NC)"; \
+		fi; \
 	else \
-		echo "$(RED)✗ MongoDB is not installed$(NC)"; \
-		echo "$(YELLOW)Install MongoDB: https://docs.mongodb.com/manual/installation/$(NC)"; \
+		echo "$(RED)✗ Docker is not installed$(NC)"; \
+		echo "$(YELLOW)Install Docker: https://docs.docker.com/get-docker/$(NC)"; \
 	fi
 	@echo ""
 	@echo "$(GREEN)Setup complete!$(NC)"
 	@echo ""
 	@echo "$(BLUE)Next steps:$(NC)"
 	@echo "  1. Edit server/.env and add your API keys"
-	@echo "  2. Start MongoDB: make mongo-start"
+	@echo "  2. Start MongoDB: make docker-up"
 	@echo "  3. Start the application: make dev"
 	@echo ""
 
@@ -181,52 +191,87 @@ test-coverage: ## Run tests with coverage report
 	@cd server && npm run test:coverage
 
 # ================================================
-# MongoDB Management
+# Docker MongoDB Management
 # ================================================
 
-mongo-start: ## Start MongoDB (macOS/Linux)
-	@echo "$(BLUE)Starting MongoDB...$(NC)"
-	@if command -v brew >/dev/null 2>&1; then \
-		brew services start mongodb-community && \
-		echo "$(GREEN)✓ MongoDB started (via Homebrew)$(NC)"; \
-	elif command -v systemctl >/dev/null 2>&1; then \
-		sudo systemctl start mongod && \
-		echo "$(GREEN)✓ MongoDB started (via systemctl)$(NC)"; \
-	elif command -v service >/dev/null 2>&1; then \
-		sudo service mongod start && \
-		echo "$(GREEN)✓ MongoDB started (via service)$(NC)"; \
+docker-up: ## Start MongoDB in Docker container
+	@echo "$(BLUE)Starting MongoDB Docker container...$(NC)"
+	@if command -v docker-compose >/dev/null 2>&1; then \
+		docker-compose up -d && \
+		echo "$(GREEN)✓ MongoDB container started$(NC)" && \
+		echo "$(YELLOW)Waiting for MongoDB to be ready...$(NC)" && \
+		sleep 3 && \
+		$(MAKE) docker-status; \
+	elif docker compose version >/dev/null 2>&1; then \
+		docker compose up -d && \
+		echo "$(GREEN)✓ MongoDB container started$(NC)" && \
+		echo "$(YELLOW)Waiting for MongoDB to be ready...$(NC)" && \
+		sleep 3 && \
+		$(MAKE) docker-status; \
 	else \
-		echo "$(YELLOW)⚠ Could not detect service manager. Try running manually:$(NC)"; \
-		echo "  mongod --dbpath ~/data/db"; \
+		echo "$(RED)✗ Docker Compose not found$(NC)"; \
+		echo "$(YELLOW)Install Docker Compose: https://docs.docker.com/compose/install/$(NC)"; \
 	fi
 
-mongo-stop: ## Stop MongoDB (macOS/Linux)
-	@echo "$(BLUE)Stopping MongoDB...$(NC)"
-	@if command -v brew >/dev/null 2>&1; then \
-		brew services stop mongodb-community && \
-		echo "$(GREEN)✓ MongoDB stopped (via Homebrew)$(NC)"; \
-	elif command -v systemctl >/dev/null 2>&1; then \
-		sudo systemctl stop mongod && \
-		echo "$(GREEN)✓ MongoDB stopped (via systemctl)$(NC)"; \
-	elif command -v service >/dev/null 2>&1; then \
-		sudo service mongod stop && \
-		echo "$(GREEN)✓ MongoDB stopped (via service)$(NC)"; \
+docker-down: ## Stop and remove MongoDB container
+	@echo "$(BLUE)Stopping MongoDB Docker container...$(NC)"
+	@if command -v docker-compose >/dev/null 2>&1; then \
+		docker-compose down && \
+		echo "$(GREEN)✓ MongoDB container stopped and removed$(NC)"; \
+	elif docker compose version >/dev/null 2>&1; then \
+		docker compose down && \
+		echo "$(GREEN)✓ MongoDB container stopped and removed$(NC)"; \
 	else \
-		echo "$(YELLOW)⚠ Could not detect service manager$(NC)"; \
+		echo "$(RED)✗ Docker Compose not found$(NC)"; \
 	fi
 
-mongo-status: ## Check MongoDB status
-	@echo "$(BLUE)Checking MongoDB status...$(NC)"
-	@if command -v mongosh >/dev/null 2>&1; then \
-		if mongosh --eval "db.adminCommand('ping')" --quiet >/dev/null 2>&1; then \
-			echo "$(GREEN)✓ MongoDB is running$(NC)"; \
-		else \
-			echo "$(RED)✗ MongoDB is not running$(NC)"; \
-			echo "$(YELLOW)Start it with: make mongo-start$(NC)"; \
-		fi; \
+docker-restart: ## Restart MongoDB container
+	@echo "$(BLUE)Restarting MongoDB Docker container...$(NC)"
+	@$(MAKE) docker-down
+	@$(MAKE) docker-up
+
+docker-logs: ## View MongoDB container logs
+	@echo "$(BLUE)MongoDB container logs:$(NC)"
+	@if command -v docker-compose >/dev/null 2>&1; then \
+		docker-compose logs -f mongodb; \
+	elif docker compose version >/dev/null 2>&1; then \
+		docker compose logs -f mongodb; \
 	else \
-		echo "$(YELLOW)⚠ mongosh not found. Install MongoDB Shell to check status.$(NC)"; \
+		echo "$(RED)✗ Docker Compose not found$(NC)"; \
 	fi
+
+docker-status: ## Check MongoDB container status
+	@echo "$(BLUE)Checking MongoDB container status...$(NC)"
+	@if docker ps --filter "name=stocks-mongodb" --format "{{.Status}}" | grep -q "Up"; then \
+		echo "$(GREEN)✓ MongoDB container is running$(NC)"; \
+		docker ps --filter "name=stocks-mongodb" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"; \
+	else \
+		echo "$(RED)✗ MongoDB container is not running$(NC)"; \
+		echo "$(YELLOW)Start it with: make docker-up$(NC)"; \
+	fi
+
+docker-clean: ## Remove MongoDB container and volumes (WARNING: deletes all data)
+	@echo "$(RED)WARNING: This will delete all MongoDB data!$(NC)"
+	@echo -n "Are you sure? [y/N] " && read ans && [ $${ans:-N} = y ]
+	@echo "$(BLUE)Removing MongoDB container and volumes...$(NC)"
+	@if command -v docker-compose >/dev/null 2>&1; then \
+		docker-compose down -v && \
+		echo "$(GREEN)✓ MongoDB container and volumes removed$(NC)"; \
+	elif docker compose version >/dev/null 2>&1; then \
+		docker compose down -v && \
+		echo "$(GREEN)✓ MongoDB container and volumes removed$(NC)"; \
+	else \
+		echo "$(RED)✗ Docker Compose not found$(NC)"; \
+	fi
+
+mongo-shell: ## Open MongoDB shell
+	@echo "$(BLUE)Opening MongoDB shell...$(NC)"
+	@docker exec -it stocks-mongodb mongosh stocks
+
+# Legacy aliases for backward compatibility
+mongo-start: docker-up ## Alias for docker-up
+mongo-stop: docker-down ## Alias for docker-down
+mongo-status: docker-status ## Alias for docker-status
 
 # ================================================
 # Cleanup
@@ -293,9 +338,9 @@ logs: ## View application logs
 
 .PHONY: start-all stop-all restart
 
-start-all: mongo-start dev ## Start MongoDB and development servers
+start-all: docker-up dev ## Start MongoDB and development servers
 
-stop-all: mongo-stop ## Stop all services
+stop-all: docker-down ## Stop all services
 	@echo "$(YELLOW)Stopping development servers...$(NC)"
 	@pkill -f "npm run dev" || true
 	@echo "$(GREEN)✓ All services stopped$(NC)"
