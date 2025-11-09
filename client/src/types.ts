@@ -59,7 +59,7 @@ export interface OwnershipData {
   publicOwnership: number; // percentage
   floatShares: number;
   sharesOutstanding: number;
-  source: 'fmp' | 'sec';
+  source: 'fmp' | 'sec' | 'mock';
   timestamp: string;
 }
 

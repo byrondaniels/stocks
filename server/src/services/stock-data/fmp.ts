@@ -79,29 +79,27 @@ export async function fetchFMPOwnership(ticker: string): Promise<OwnershipData> 
 
   await enforceInterval(fmpRateLimit);
 
-  // Fetch both key metrics and institutional ownership
-  const keyMetricsUrl = `${FMP_BASE}/key-metrics-ttm/${ticker}?apikey=${FMP_KEY}`;
-  const institutionalUrl = `${FMP_BASE}/institutional-holder/${ticker}?apikey=${FMP_KEY}`;
+  // Use new v4 endpoints
+  const sharesFloatUrl = `https://financialmodelingprep.com/api/v4/shares_float?symbol=${ticker}&apikey=${FMP_KEY}`;
+  const institutionalUrl = `https://financialmodelingprep.com/api/v4/institutional-ownership/symbol-ownership?symbol=${ticker}&apikey=${FMP_KEY}`;
 
   try {
-    // Fetch key metrics for shares outstanding
-    const metricsResponse = await fetchWithRetry(keyMetricsUrl);
+    // Fetch shares float data for shares outstanding
+    const sharesResponse = await fetchWithRetry(sharesFloatUrl);
     recordRequest(fmpRateLimit);
 
-    if (!metricsResponse.ok) {
-      throw new Error(`HTTP ${metricsResponse.status}: ${metricsResponse.statusText}`);
+    if (!sharesResponse.ok) {
+      throw new Error(`HTTP ${sharesResponse.status}: ${sharesResponse.statusText}`);
     }
 
-    const metricsData = await metricsResponse.json();
+    const sharesData = await sharesResponse.json();
 
-    if (!metricsData || metricsData.length === 0) {
+    if (!sharesData || sharesData.length === 0) {
       throw new Error('Ticker not found');
     }
 
-    const metrics = metricsData[0];
-    const sharesOutstanding = metrics.marketCapTTM && metrics.priceToEarningsRatioTTM
-      ? metrics.marketCapTTM / (metrics.priceToEarningsRatioTTM || 1)
-      : 0;
+    const sharesInfo = sharesData[0];
+    const sharesOutstanding = sharesInfo.outstandingShares || sharesInfo.sharesOutstanding || 0;
 
     // Small delay between requests
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -118,9 +116,9 @@ export async function fetchFMPOwnership(ticker: string): Promise<OwnershipData> 
           const instData = await instResponse.json();
 
           if (instData && instData.length > 0) {
-            // Sum up institutional holdings
+            // New v4 API response format: sum up institutional holdings
             const totalInstitutionalShares = instData.reduce(
-              (sum: number, holder: any) => sum + (holder.shares || 0),
+              (sum: number, holder: any) => sum + (holder.sharesNumber || holder.shares || 0),
               0
             );
 

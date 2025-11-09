@@ -3,6 +3,7 @@
  * Main entry point for the Express application
  */
 
+import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import { connectToDatabase } from "./db/index.js";
