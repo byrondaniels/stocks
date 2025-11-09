@@ -110,14 +110,34 @@ export function parseOwnershipXml(
       const acquireDisposed =
         extractValue(transactionAmounts.transactionAcquiredDisposedCode) ??
         extractValue(acquireDisposedNode);
+
+      // Determine transaction type
+      // Prioritize transaction code over acquire/dispose for accuracy
       let type: ParsedTransaction["type"] = "other";
-      if (acquireDisposed === "A") {
-        type = "buy";
-      } else if (acquireDisposed === "D") {
+
+      if (transactionCode === "M") {
+        // M = Exercise or conversion of derivative security
+        type = "other";
+      } else if (transactionCode === "F") {
+        // F = Payment of exercise price or tax liability
+        type = "other";
+      } else if (transactionCode === "S") {
+        // S = Open market or private sale
         type = "sell";
       } else if (transactionCode === "P") {
+        // P = Open market or private purchase
         type = "buy";
-      } else if (transactionCode === "S") {
+      } else if (transactionCode === "A") {
+        // A = Grant, award or other acquisition
+        type = "buy";
+      } else if (transactionCode === "D") {
+        // D = Disposition to the issuer
+        type = "sell";
+      } else if (acquireDisposed === "A") {
+        // Fallback: acquired
+        type = "buy";
+      } else if (acquireDisposed === "D") {
+        // Fallback: disposed
         type = "sell";
       }
       const securityTitle = extractValue(
