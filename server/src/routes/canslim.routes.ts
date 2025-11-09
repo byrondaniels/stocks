@@ -9,10 +9,11 @@ import {
   calculateCANSLIMScore,
 } from "../services/canslimCalculator.js";
 import { type ApiError } from "../services/stockData.js";
+import { HTTP_STATUS, ERROR_MESSAGES, CANSLIM_CACHE_HOURS } from "../constants.js";
+import { normalizeTicker, isValidTicker } from "../utils/validation.js";
+import { handleApiError, sendBadRequest } from "../utils/errorHandler.js";
 
 const router = Router();
-
-const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
 
 /**
  * GET /api/canslim?ticker=AAPL
@@ -20,39 +21,20 @@ const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
  */
 router.get("/", async (req: Request, res: ExpressResponse) => {
   const rawTicker = (req.query.ticker as string | undefined) ?? "";
-  const ticker = rawTicker.trim().toUpperCase();
+  const ticker = normalizeTicker(rawTicker);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
   try {
-    // Get cached score or calculate if not cached/stale (24 hour cache)
-    const canslimScore = await getOrCalculateCANSLIMScore(ticker, 24);
+    // Get cached score or calculate if not cached/stale
+    const canslimScore = await getOrCalculateCANSLIMScore(ticker, CANSLIM_CACHE_HOURS);
     res.json(canslimScore);
   } catch (error) {
     console.error("Error calculating CANSLIM score:", error);
-    const apiError = error as ApiError;
-
-    if (apiError.code === "RATE_LIMIT") {
-      res.status(429).json({
-        error: apiError.message,
-        retryAfter: apiError.retryAfter,
-      });
-      return;
-    }
-
-    if (apiError.code === "NOT_FOUND") {
-      res.status(404).json({ error: apiError.message });
-      return;
-    }
-
-    res.status(502).json({
-      error: "Unable to calculate CANSLIM score. Please try again later.",
-    });
+    handleApiError(res, error, ERROR_MESSAGES.CANSLIM_SCORE_ERROR);
   }
 });
 
@@ -62,12 +44,10 @@ router.get("/", async (req: Request, res: ExpressResponse) => {
  */
 router.post("/refresh", async (req: Request, res: ExpressResponse) => {
   const rawTicker = (req.query.ticker as string | undefined) ?? "";
-  const ticker = rawTicker.trim().toUpperCase();
+  const ticker = normalizeTicker(rawTicker);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
@@ -81,24 +61,7 @@ router.post("/refresh", async (req: Request, res: ExpressResponse) => {
     });
   } catch (error) {
     console.error("Error refreshing CANSLIM score:", error);
-    const apiError = error as ApiError;
-
-    if (apiError.code === "RATE_LIMIT") {
-      res.status(429).json({
-        error: apiError.message,
-        retryAfter: apiError.retryAfter,
-      });
-      return;
-    }
-
-    if (apiError.code === "NOT_FOUND") {
-      res.status(404).json({ error: apiError.message });
-      return;
-    }
-
-    res.status(502).json({
-      error: "Unable to refresh CANSLIM score. Please try again later.",
-    });
+    handleApiError(res, error, "Unable to refresh CANSLIM score. Please try again later.");
   }
 });
 

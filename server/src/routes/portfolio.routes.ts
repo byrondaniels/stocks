@@ -16,10 +16,20 @@ import {
   calculate50DMA,
 } from "../services/priceHistory.js";
 import { getInsiderTransactions } from "../services/sec/insider-service.js";
+import {
+  HTTP_STATUS,
+  ERROR_MESSAGES,
+  HISTORICAL_DAYS_DEFAULT,
+} from "../constants.js";
+import {
+  normalizeTicker,
+  isValidTicker,
+  isPositiveNumber,
+} from "../utils/validation.js";
+import { calculateProfitLoss } from "../utils/calculations.js";
+import { sendBadRequest, sendNotFound, sendInternalError } from "../utils/errorHandler.js";
 
 const router = Router();
-
-const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
 
 /**
  * GET /api/portfolio
@@ -38,8 +48,11 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
           const currentPrice = priceData.price;
 
           // Calculate profit/loss
-          const profitLoss = (currentPrice - stock.purchasePrice) * stock.shares;
-          const profitLossPercent = ((currentPrice - stock.purchasePrice) / stock.purchasePrice) * 100;
+          const { profitLoss, profitLossPercent } = calculateProfitLoss(
+            currentPrice,
+            stock.purchasePrice,
+            stock.shares
+          );
 
           // Get 50DMA stats and insider activity in parallel
           const [dmaStats, insiderData] = await Promise.all([
@@ -50,8 +63,8 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
           return {
             ...stock,
             currentPrice,
-            profitLoss: parseFloat(profitLoss.toFixed(2)),
-            profitLossPercent: parseFloat(profitLossPercent.toFixed(2)),
+            profitLoss,
+            profitLossPercent,
             movingAverage50: dmaStats.movingAverage50,
             percentageDifference: dmaStats.percentageDifference,
             priceCount: dmaStats.priceCount,
@@ -84,9 +97,7 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
     });
   } catch (error) {
     console.error("[Portfolio] Error fetching portfolio:", error);
-    res.status(500).json({
-      error: "Failed to retrieve portfolio",
-    });
+    sendInternalError(res, "Failed to retrieve portfolio");
   }
 });
 
@@ -95,12 +106,10 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
  * Get detailed view for one stock
  */
 router.get("/:ticker", async (req: Request, res: ExpressResponse) => {
-  const ticker = req.params.ticker.trim().toUpperCase();
+  const ticker = normalizeTicker(req.params.ticker);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
@@ -108,17 +117,18 @@ router.get("/:ticker", async (req: Request, res: ExpressResponse) => {
     const portfolioItem = await Portfolio.findOne({ ticker }).lean();
 
     if (!portfolioItem) {
-      res.status(404).json({
-        error: `Stock ${ticker} not found in portfolio.`,
-      });
+      sendNotFound(res, ERROR_MESSAGES.STOCK_NOT_FOUND);
       return;
     }
 
     try {
       const priceData = await getCurrentPrice(ticker);
       const currentPrice = priceData.price;
-      const profitLoss = (currentPrice - portfolioItem.purchasePrice) * portfolioItem.shares;
-      const profitLossPercent = ((currentPrice - portfolioItem.purchasePrice) / portfolioItem.purchasePrice) * 100;
+      const { profitLoss, profitLossPercent } = calculateProfitLoss(
+        currentPrice,
+        portfolioItem.purchasePrice,
+        portfolioItem.shares
+      );
 
       res.json({
         ticker: portfolioItem.ticker,
@@ -126,8 +136,8 @@ router.get("/:ticker", async (req: Request, res: ExpressResponse) => {
         purchasePrice: portfolioItem.purchasePrice,
         purchaseDate: portfolioItem.purchaseDate.toISOString(),
         currentPrice,
-        profitLoss: parseFloat(profitLoss.toFixed(2)),
-        profitLossPercent: parseFloat(profitLossPercent.toFixed(2)),
+        profitLoss,
+        profitLossPercent,
       });
     } catch (error) {
       // If we can't get current price, return without profit/loss metrics
@@ -140,9 +150,7 @@ router.get("/:ticker", async (req: Request, res: ExpressResponse) => {
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      error: "Unable to retrieve stock from portfolio.",
-    });
+    sendInternalError(res, "Unable to retrieve stock from portfolio.");
   }
 });
 
@@ -156,43 +164,33 @@ router.post("/", async (req: Request, res: ExpressResponse) => {
 
   // Validate required fields
   if (!rawTicker || shares === undefined || purchasePrice === undefined || !purchaseDate) {
-    res.status(400).json({
-      error: "Missing required fields: ticker, shares, purchasePrice, purchaseDate",
-    });
+    sendBadRequest(res, "Missing required fields: ticker, shares, purchasePrice, purchaseDate");
     return;
   }
 
-  const ticker = rawTicker.trim().toUpperCase();
+  const ticker = normalizeTicker(rawTicker);
 
   // Validate ticker format
-  if (!TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker format. Use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER_FORMAT);
     return;
   }
 
   // Validate numeric values
-  if (typeof shares !== "number" || shares <= 0) {
-    res.status(400).json({
-      error: "Shares must be a positive number",
-    });
+  if (!isPositiveNumber(shares)) {
+    sendBadRequest(res, ERROR_MESSAGES.SHARES_POSITIVE);
     return;
   }
 
-  if (typeof purchasePrice !== "number" || purchasePrice <= 0) {
-    res.status(400).json({
-      error: "Purchase price must be a positive number",
-    });
+  if (!isPositiveNumber(purchasePrice)) {
+    sendBadRequest(res, ERROR_MESSAGES.PRICE_POSITIVE);
     return;
   }
 
   // Validate date format
   const date = new Date(purchaseDate);
   if (isNaN(date.getTime())) {
-    res.status(400).json({
-      error: "Invalid purchase date. Please use ISO date format (YYYY-MM-DD).",
-    });
+    sendBadRequest(res, "Invalid purchase date. Please use ISO date format (YYYY-MM-DD).");
     return;
   }
 
@@ -200,7 +198,7 @@ router.post("/", async (req: Request, res: ExpressResponse) => {
     // Check if ticker already exists in portfolio
     const existing = await Portfolio.findOne({ ticker });
     if (existing) {
-      res.status(409).json({
+      res.status(HTTP_STATUS.CONFLICT).json({
         error: `Stock ${ticker} already exists in portfolio. Use PUT to update.`,
       });
       return;
@@ -219,8 +217,8 @@ router.post("/", async (req: Request, res: ExpressResponse) => {
 
     console.log(`[Portfolio] Added ${ticker} to portfolio`);
 
-    // Fetch and store 50 days of historical prices in the background
-    fetchAndStoreHistoricalPrices(ticker, 50)
+    // Fetch and store historical prices in the background
+    fetchAndStoreHistoricalPrices(ticker, HISTORICAL_DAYS_DEFAULT)
       .then((count) => {
         console.log(`[Portfolio] Stored ${count} historical prices for ${ticker}`);
       })
@@ -228,7 +226,7 @@ router.post("/", async (req: Request, res: ExpressResponse) => {
         console.error(`[Portfolio] Failed to fetch historical prices for ${ticker}:`, error);
       });
 
-    res.status(201).json({
+    res.status(HTTP_STATUS.CREATED).json({
       success: true,
       message: `Successfully added ${ticker} to portfolio. Historical prices are being fetched.`,
       portfolio: {
@@ -240,9 +238,7 @@ router.post("/", async (req: Request, res: ExpressResponse) => {
     });
   } catch (error) {
     console.error("[Portfolio] Error adding stock to portfolio:", error);
-    res.status(500).json({
-      error: "Failed to add stock to portfolio",
-    });
+    sendInternalError(res, "Failed to add stock to portfolio");
   }
 });
 
@@ -251,13 +247,11 @@ router.post("/", async (req: Request, res: ExpressResponse) => {
  * Update stock (shares, purchase price, purchase date)
  */
 router.put("/:ticker", async (req: Request, res: ExpressResponse) => {
-  const ticker = req.params.ticker.trim().toUpperCase();
+  const ticker = normalizeTicker(req.params.ticker);
   const { shares, purchasePrice, purchaseDate } = req.body;
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
@@ -265,20 +259,16 @@ router.put("/:ticker", async (req: Request, res: ExpressResponse) => {
   const updateFields: any = {};
 
   if (shares !== undefined) {
-    if (typeof shares !== "number" || shares <= 0) {
-      res.status(400).json({
-        error: "Shares must be a positive number.",
-      });
+    if (!isPositiveNumber(shares)) {
+      sendBadRequest(res, ERROR_MESSAGES.SHARES_POSITIVE);
       return;
     }
     updateFields.shares = shares;
   }
 
   if (purchasePrice !== undefined) {
-    if (typeof purchasePrice !== "number" || purchasePrice <= 0) {
-      res.status(400).json({
-        error: "Purchase price must be a positive number.",
-      });
+    if (!isPositiveNumber(purchasePrice)) {
+      sendBadRequest(res, ERROR_MESSAGES.PRICE_POSITIVE);
       return;
     }
     updateFields.purchasePrice = purchasePrice;
@@ -287,9 +277,7 @@ router.put("/:ticker", async (req: Request, res: ExpressResponse) => {
   if (purchaseDate !== undefined) {
     const date = new Date(purchaseDate);
     if (isNaN(date.getTime())) {
-      res.status(400).json({
-        error: "Invalid purchase date. Please use ISO date format (YYYY-MM-DD).",
-      });
+      sendBadRequest(res, "Invalid purchase date. Please use ISO date format (YYYY-MM-DD).");
       return;
     }
     updateFields.purchaseDate = date;
@@ -297,9 +285,7 @@ router.put("/:ticker", async (req: Request, res: ExpressResponse) => {
 
   // Check if there are any fields to update
   if (Object.keys(updateFields).length === 0) {
-    res.status(400).json({
-      error: "No fields to update. Provide shares, purchasePrice, or purchaseDate.",
-    });
+    sendBadRequest(res, "No fields to update. Provide shares, purchasePrice, or purchaseDate.");
     return;
   }
 
@@ -311,9 +297,7 @@ router.put("/:ticker", async (req: Request, res: ExpressResponse) => {
     );
 
     if (!updatedItem) {
-      res.status(404).json({
-        error: `Stock ${ticker} not found in portfolio.`,
-      });
+      sendNotFound(res, ERROR_MESSAGES.STOCK_NOT_FOUND);
       return;
     }
 
@@ -325,9 +309,7 @@ router.put("/:ticker", async (req: Request, res: ExpressResponse) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      error: "Unable to update stock in portfolio.",
-    });
+    sendInternalError(res, "Unable to update stock in portfolio.");
   }
 });
 
@@ -336,12 +318,10 @@ router.put("/:ticker", async (req: Request, res: ExpressResponse) => {
  * Remove a stock from the portfolio
  */
 router.delete("/:ticker", async (req: Request, res: ExpressResponse) => {
-  const ticker = req.params.ticker.trim().toUpperCase();
+  const ticker = normalizeTicker(req.params.ticker);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker. Please use 1-5 uppercase letters with optional .suffix.",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
     return;
   }
 
@@ -349,9 +329,7 @@ router.delete("/:ticker", async (req: Request, res: ExpressResponse) => {
     const deletedItem = await Portfolio.findOneAndDelete({ ticker });
 
     if (!deletedItem) {
-      res.status(404).json({
-        error: `Stock ${ticker} not found in portfolio.`,
-      });
+      sendNotFound(res, ERROR_MESSAGES.STOCK_NOT_FOUND);
       return;
     }
 
@@ -368,9 +346,7 @@ router.delete("/:ticker", async (req: Request, res: ExpressResponse) => {
     });
   } catch (error) {
     console.error("[Portfolio] Error removing stock from portfolio:", error);
-    res.status(500).json({
-      error: "Failed to remove stock from portfolio",
-    });
+    sendInternalError(res, "Failed to remove stock from portfolio");
   }
 });
 
@@ -398,7 +374,7 @@ router.post("/refresh-all", async (_req: Request, res: ExpressResponse) => {
     const results = [];
     for (const stock of portfolioStocks) {
       try {
-        const storedCount = await fetchAndStoreHistoricalPrices(stock.ticker, 50);
+        const storedCount = await fetchAndStoreHistoricalPrices(stock.ticker, HISTORICAL_DAYS_DEFAULT);
         const movingAverage50 = await calculateMovingAverage(stock.ticker, 50);
 
         // Update lastUpdated timestamp
@@ -437,7 +413,7 @@ router.post("/refresh-all", async (_req: Request, res: ExpressResponse) => {
     });
   } catch (error) {
     console.error("[Portfolio] Error during refresh-all:", error);
-    res.status(500).json({
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       error: "Failed to refresh portfolio",
       details: (error as Error).message || "Unknown error",
     });
@@ -449,12 +425,10 @@ router.post("/refresh-all", async (_req: Request, res: ExpressResponse) => {
  * Manually refresh price history for a specific ticker
  */
 router.post("/:ticker/refresh", async (req: Request, res: ExpressResponse) => {
-  const ticker = req.params.ticker.trim().toUpperCase();
+  const ticker = normalizeTicker(req.params.ticker);
 
-  if (!ticker || !TICKER_REGEX.test(ticker)) {
-    res.status(400).json({
-      error: "Invalid ticker format",
-    });
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER_FORMAT);
     return;
   }
 
@@ -463,16 +437,14 @@ router.post("/:ticker/refresh", async (req: Request, res: ExpressResponse) => {
     const portfolioEntry = await Portfolio.findOne({ ticker });
 
     if (!portfolioEntry) {
-      res.status(404).json({
-        error: `${ticker} not found in portfolio`,
-      });
+      sendNotFound(res, `${ticker} not found in portfolio`);
       return;
     }
 
     // Fetch and store historical prices
     console.log(`[Portfolio] Manually refreshing price history for ${ticker}`);
 
-    const storedCount = await fetchAndStoreHistoricalPrices(ticker, 50);
+    const storedCount = await fetchAndStoreHistoricalPrices(ticker, HISTORICAL_DAYS_DEFAULT);
 
     // Calculate 50DMA
     const movingAverage50 = await calculateMovingAverage(ticker, 50);
@@ -498,14 +470,14 @@ router.post("/:ticker/refresh", async (req: Request, res: ExpressResponse) => {
 
     const apiError = error as ApiError;
     if (apiError.code === "RATE_LIMIT") {
-      res.status(429).json({
+      res.status(HTTP_STATUS.TOO_MANY_REQUESTS).json({
         error: apiError.message,
         retryAfter: apiError.retryAfter,
       });
       return;
     }
 
-    res.status(500).json({
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       error: "Failed to refresh price history",
       details: apiError.message || "Unknown error",
     });

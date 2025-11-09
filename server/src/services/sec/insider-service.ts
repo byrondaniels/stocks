@@ -16,9 +16,7 @@ import {
   ParsedTransaction,
   Summary,
 } from "./types.js";
-
-const TRANSACTION_CACHE_MS = 5 * 60 * 1000;
-const MAX_FILINGS_TO_PROCESS = 3;
+import { SEC_CONFIG } from "../../constants.js";
 
 const transactionsCache = new Map<
   string,
@@ -87,7 +85,7 @@ export async function getInsiderTransactions(
   ticker: string
 ): Promise<InsiderLookupResult | null> {
   const inMemory = transactionsCache.get(ticker);
-  if (inMemory && Date.now() - inMemory.timestamp < TRANSACTION_CACHE_MS) {
+  if (inMemory && Date.now() - inMemory.timestamp < SEC_CONFIG.TRANSACTION_CACHE_MS) {
     return inMemory.data;
   }
 
@@ -110,7 +108,7 @@ export async function getInsiderTransactions(
       const bTime = b.filingDate ? Date.parse(b.filingDate) : 0;
       return bTime - aTime;
     })
-    .slice(0, MAX_FILINGS_TO_PROCESS);
+    .slice(0, SEC_CONFIG.MAX_FILINGS_TO_PROCESS);
   const transactions: ParsedTransaction[] = [];
 
   for (const filing of filings) {

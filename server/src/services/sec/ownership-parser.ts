@@ -5,8 +5,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { politeFetch, ensureArray, extractValue } from "./utils.js";
 import { ParsedTransaction, RecentFiling, TransactionAmounts } from "./types.js";
-
-const SEC_ARCHIVES_URL = "https://www.sec.gov/Archives/edgar/data";
+import { SEC_CONFIG } from "../../constants.js";
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -18,7 +17,7 @@ export function buildFilingDocumentUrl(cik: string, filing: RecentFiling): strin
   const numericCik = String(Number.parseInt(cik, 10));
   const accessionPath = filing.accessionNumber.replace(/-/g, "");
   const cleanedDocument = filing.primaryDocument.replace(/^xslF[^/]+\//i, "");
-  return `${SEC_ARCHIVES_URL}/${numericCik}/${accessionPath}/${cleanedDocument}`;
+  return `${SEC_CONFIG.ARCHIVES_URL}/${numericCik}/${accessionPath}/${cleanedDocument}`;
 }
 
 export async function fetchOwnershipDocument(

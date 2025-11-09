@@ -1,7 +1,7 @@
 import { PortfolioStock } from '../types';
 import { InsiderActivity } from './InsiderActivity';
 import { RefreshButton } from './RefreshButton';
-import { formatDate } from '../utils/formatters';
+import { formatDate, formatCurrency } from '../utils/formatters';
 
 interface PortfolioTableProps {
   stocks: PortfolioStock[];
@@ -13,16 +13,6 @@ interface PortfolioTableProps {
 }
 
 export function PortfolioTable({ stocks, onRemove, onDetail, onRefresh, refreshingStock, cooldowns = {} }: PortfolioTableProps) {
-  const formatCurrency = (value: number | undefined) => {
-    if (value === undefined) return '-';
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
-
   const formatPercent = (value: number | undefined) => {
     if (value === undefined) return '-';
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;

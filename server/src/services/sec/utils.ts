@@ -2,10 +2,11 @@
  * Utility functions for SEC API operations
  */
 
+import { SEC_CONFIG } from "../../constants.js";
+
 const USER_AGENT =
   process.env.SEC_USER_AGENT ||
   "stocks-insider-poc/1.0 (byrondaniels@gmail.com)";
-const MIN_REQUEST_INTERVAL_MS = 250; // politeness delay between SEC requests
 
 let lastRequestTime = 0;
 
@@ -18,8 +19,8 @@ export async function politeFetch(
   init: RequestInit = {}
 ): Promise<Response> {
   const timeSinceLast = Date.now() - lastRequestTime;
-  if (timeSinceLast < MIN_REQUEST_INTERVAL_MS) {
-    await delay(MIN_REQUEST_INTERVAL_MS - timeSinceLast);
+  if (timeSinceLast < SEC_CONFIG.MIN_REQUEST_INTERVAL_MS) {
+    await delay(SEC_CONFIG.MIN_REQUEST_INTERVAL_MS - timeSinceLast);
   }
   lastRequestTime = Date.now();
   const headers = {

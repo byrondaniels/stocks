@@ -4,8 +4,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-
-const RATE_LIMIT_MS = 60000; // 1 minute
+import { RATE_LIMIT_MS } from '../constants';
 
 export const useRefreshRateLimit = () => {
   const lastRefreshTimes = useRef<Record<string, number>>({});

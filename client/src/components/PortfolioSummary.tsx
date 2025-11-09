@@ -1,4 +1,5 @@
 import { PortfolioSummary as PortfolioSummaryType } from '../types';
+import { formatCurrency } from '../utils/formatters';
 
 interface PortfolioSummaryProps {
   summary: PortfolioSummaryType;
@@ -6,15 +7,6 @@ interface PortfolioSummaryProps {
 }
 
 export function PortfolioSummary({ summary, stockCount }: PortfolioSummaryProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
-
   const formatPercent = (value: number) => {
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };

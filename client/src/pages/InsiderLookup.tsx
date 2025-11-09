@@ -1,7 +1,8 @@
 import { FormEvent, useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-
-const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
+import { formatCurrency, formatShares } from "../utils/formatters";
+import { TICKER_REGEX, normalizeTicker } from "../utils/validation";
+import { TICKER_MAX_LENGTH } from "../constants";
 
 type InsiderResponse = {
   ticker: string;
@@ -24,29 +25,6 @@ type InsiderResponse = {
     note?: string;
   }>;
 };
-
-const numberFormatter = new Intl.NumberFormat(undefined, {
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 0,
-});
-
-const currencyFormatter = new Intl.NumberFormat(undefined, {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-function formatShares(value: number) {
-  return numberFormatter.format(value);
-}
-
-function formatCurrency(value?: number | null) {
-  if (value == null || Number.isNaN(value)) {
-    return "—";
-  }
-  return currencyFormatter.format(value);
-}
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -77,7 +55,7 @@ export function InsiderLookup() {
       setTicker(urlTicker.toUpperCase());
       // Auto-submit for legacy URL support
       const fetchInsiderData = async () => {
-        const trimmed = urlTicker.trim().toUpperCase();
+        const trimmed = normalizeTicker(urlTicker);
         if (!trimmed || !TICKER_REGEX.test(trimmed)) {
           setError("Please enter a valid U.S. ticker (e.g. AAPL, BRK.B).");
           return;
@@ -120,7 +98,7 @@ export function InsiderLookup() {
     setError(null);
     setResult(null);
 
-    const trimmed = ticker.trim().toUpperCase();
+    const trimmed = normalizeTicker(ticker);
     if (!trimmed || !TICKER_REGEX.test(trimmed)) {
       setError("Please enter a valid U.S. ticker (e.g. AAPL, BRK.B).");
       return;
@@ -158,7 +136,7 @@ export function InsiderLookup() {
             value={ticker}
             onChange={(event) => setTicker(event.target.value.toUpperCase())}
             placeholder="AAPL"
-            maxLength={9}
+            maxLength={TICKER_MAX_LENGTH}
             aria-describedby="ticker-help"
             autoComplete="off"
           />

@@ -3,7 +3,8 @@ import { PortfolioStock, PriceHistoryPoint } from '../types';
 import { PriceLineChart } from './PriceLineChart';
 import { InsiderActivity } from './InsiderActivity';
 import { RefreshButton } from './RefreshButton';
-import { formatDate } from '../utils/formatters';
+import { formatDate, formatCurrency } from '../utils/formatters';
+import { HISTORICAL_DAYS_DEFAULT } from '../constants';
 import './StockCard.css';
 
 interface StockCardProps {
@@ -23,7 +24,7 @@ export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, co
     const fetchPriceHistory = async () => {
       try {
         setLoadingHistory(true);
-        const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(stock.ticker)}&days=50`);
+        const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(stock.ticker)}&days=${HISTORICAL_DAYS_DEFAULT}`);
         if (response.ok) {
           const data = await response.json();
           setPriceHistory(data);
@@ -37,16 +38,6 @@ export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, co
 
     fetchPriceHistory();
   }, [stock.ticker]);
-
-  const formatCurrency = (value: number | undefined) => {
-    if (value === undefined) return '-';
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
 
   const formatPercent = (value: number | undefined) => {
     if (value === undefined) return '-';
