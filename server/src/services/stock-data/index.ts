@@ -87,11 +87,22 @@ export async function getOwnershipData(ticker: string): Promise<OwnershipData> {
     return cached!.data;
   }
 
-  console.log(`[StockData] Fetching ownership data for ${normalizedTicker}`);
-
-  const ownership = await fetchFMPOwnership(normalizedTicker);
-  setCache(ownershipCache, normalizedTicker, ownership);
-  return ownership;
+  console.log(`[StockData] FMP ownership data temporarily disabled (requires paid subscription)`);
+  
+  // FMP requires paid subscription, return mock data for now
+  const mockOwnership = {
+    ticker: normalizedTicker,
+    insiderOwnership: 10, // Typical estimate
+    institutionalOwnership: 65, // Typical for large cap stocks
+    publicOwnership: 25, // Remaining ownership
+    floatShares: 15500000000, // Mock: ~15.5B shares float
+    sharesOutstanding: 16000000000, // Mock: ~16B shares outstanding
+    source: 'mock',
+    timestamp: new Date().toISOString()
+  };
+  
+  setCache(ownershipCache, normalizedTicker, mockOwnership);
+  return mockOwnership;
 }
 
 /**
@@ -109,11 +120,22 @@ export async function getFinancialMetrics(ticker: string): Promise<FinancialMetr
     return cached!.data;
   }
 
-  console.log(`[StockData] Fetching financial metrics for ${normalizedTicker}`);
+  console.log(`[StockData] FMP financials temporarily disabled (requires paid subscription)`);
 
-  const metrics = await fetchFMPFinancials(normalizedTicker);
-  setCache(financialsCache, normalizedTicker, metrics);
-  return metrics;
+  // FMP requires paid subscription, return mock data for now
+  const mockMetrics = {
+    ticker: normalizedTicker,
+    revenueGrowth: 8.5, // Typical for large cap
+    epsGrowth: 12.0, // Typical growth
+    roe: 22.0, // Typical for healthy companies
+    debtToEquity: 0.8, // Moderate debt
+    currentRatio: 1.2, // Adequate liquidity
+    source: 'mock',
+    timestamp: new Date().toISOString()
+  };
+  
+  setCache(financialsCache, normalizedTicker, mockMetrics);
+  return mockMetrics;
 }
 
 /**
