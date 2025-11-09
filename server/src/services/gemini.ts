@@ -1,7 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Initialize Gemini AI with new SDK
+const genAI = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY || ''
+});
 
 /**
  * CANSLIM metrics interface for scoring
@@ -64,14 +66,23 @@ export async function analyzeCANSLIMWithGemini(
     throw new Error('GEMINI_API_KEY is not configured');
   }
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
-
   const prompt = buildCANSLIMPrompt(metrics);
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    // Use new SDK API with v1 model (gemini-2.0-flash)
+    const response = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{
+        role: 'user',
+        parts: [{ text: prompt }]
+      }]
+    });
+
+    const text = response.text;
+
+    if (!text) {
+      throw new Error('No response text received from Gemini API');
+    }
 
     // Parse JSON response from Gemini
     const analysis = parseGeminiResponse(text);
