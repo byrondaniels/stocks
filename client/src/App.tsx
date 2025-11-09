@@ -46,6 +46,7 @@ function App() {
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/stock/:ticker" element={<StockDetail />} />
             <Route path="/insiders" element={<InsiderLookup />} />
+            <Route path="/insider/:ticker" element={<InsiderLookup />} />
           </Routes>
         </main>
       </div>
