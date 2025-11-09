@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { PortfolioStock, AddStockFormData, PortfolioSummary as PortfolioSummaryType } from '../types';
 import { AddStockForm } from '../components/AddStockForm';
 import { PortfolioTable } from '../components/PortfolioTable';
@@ -7,6 +8,8 @@ import { StockCard } from '../components/StockCard';
 import { PortfolioSummary } from '../components/PortfolioSummary';
 import { EmptyState } from '../components/EmptyState';
 import { DeleteConfirmation } from '../components/DeleteConfirmation';
+import { RefreshButton } from '../components/RefreshButton';
+import { useRefreshRateLimit } from '../hooks/useRefreshRateLimit';
 
 export function Portfolio() {
   const navigate = useNavigate();
@@ -16,6 +19,9 @@ export function Portfolio() {
   const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [refreshingAll, setRefreshingAll] = useState(false);
+  const [refreshingStock, setRefreshingStock] = useState<string | null>(null);
+  const { canRefresh, recordRefresh, cooldowns } = useRefreshRateLimit();
 
   // Fetch portfolio data
   const fetchPortfolio = async () => {
@@ -126,6 +132,82 @@ export function Portfolio() {
     setDeleteConfirmation(ticker);
   };
 
+  // Refresh individual stock
+  const handleRefreshStock = async (ticker: string) => {
+    if (!canRefresh(ticker)) {
+      const remainingSeconds = cooldowns[ticker] || 0;
+      toast.error(`Please wait ${remainingSeconds}s before refreshing ${ticker} again`);
+      return;
+    }
+
+    setRefreshingStock(ticker);
+    const toastId = toast.loading(`Refreshing ${ticker}...`);
+
+    try {
+      const response = await fetch(`/api/portfolio/${encodeURIComponent(ticker)}/refresh`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? `Failed to refresh: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Show success message
+      toast.success(data.message || `${ticker} refreshed successfully`, { id: toastId });
+
+      // Record refresh to start cooldown
+      recordRefresh(ticker);
+
+      // Refresh portfolio to get updated data
+      await fetchPortfolio();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to refresh ${ticker}`, { id: toastId });
+    } finally {
+      setRefreshingStock(null);
+    }
+  };
+
+  // Refresh all stocks
+  const handleRefreshAll = async () => {
+    if (!canRefresh('refresh-all')) {
+      const remainingSeconds = cooldowns['refresh-all'] || 0;
+      toast.error(`Please wait ${remainingSeconds}s before refreshing again`);
+      return;
+    }
+
+    setRefreshingAll(true);
+    const toastId = toast.loading('Refreshing all stocks...');
+
+    try {
+      const response = await fetch('/api/portfolio/refresh-all', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? `Failed to refresh: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Show success message
+      toast.success(data.message || 'All stocks refreshed successfully', { id: toastId });
+
+      // Record refresh to start cooldown
+      recordRefresh('refresh-all');
+
+      // Refresh portfolio to get updated data
+      await fetchPortfolio();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to refresh stocks', { id: toastId });
+    } finally {
+      setRefreshingAll(false);
+    }
+  };
+
   if (initialLoading) {
     return (
       <div className="portfolio-page">
@@ -157,18 +239,31 @@ export function Portfolio() {
       ) : (
         <div className="portfolio-content">
           <div className="view-toggle">
-            <button
-              className={`toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
-              onClick={() => setViewMode('cards')}
-            >
-              📊 Card View
-            </button>
-            <button
-              className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-              onClick={() => setViewMode('table')}
-            >
-              📋 Table View
-            </button>
+            <div className="view-toggle-buttons">
+              <button
+                className={`toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+                onClick={() => setViewMode('cards')}
+              >
+                📊 Card View
+              </button>
+              <button
+                className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+              >
+                📋 Table View
+              </button>
+            </div>
+            <div className="refresh-all-container">
+              <RefreshButton
+                onClick={handleRefreshAll}
+                loading={refreshingAll}
+                disabled={!canRefresh('refresh-all') || refreshingAll}
+                variant="text"
+                size="medium"
+              >
+                {cooldowns['refresh-all'] ? `Refresh All (${cooldowns['refresh-all']}s)` : 'Refresh All'}
+              </RefreshButton>
+            </div>
           </div>
 
           {viewMode === 'cards' ? (
@@ -179,6 +274,9 @@ export function Portfolio() {
                   stock={stock}
                   onRemove={handleRemoveClick}
                   onDetail={handleStockDetail}
+                  onRefresh={handleRefreshStock}
+                  refreshing={refreshingStock === stock.ticker}
+                  cooldownSeconds={cooldowns[stock.ticker]}
                 />
               ))}
             </div>
@@ -187,6 +285,9 @@ export function Portfolio() {
               stocks={stocks}
               onRemove={handleRemoveClick}
               onDetail={handleStockDetail}
+              onRefresh={handleRefreshStock}
+              refreshingStock={refreshingStock}
+              cooldowns={cooldowns}
             />
           )}
         </div>

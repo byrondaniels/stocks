@@ -375,6 +375,76 @@ router.delete("/:ticker", async (req: Request, res: ExpressResponse) => {
 });
 
 /**
+ * POST /api/portfolio/refresh-all
+ * Manually refresh price history for all stocks in the portfolio
+ */
+router.post("/refresh-all", async (_req: Request, res: ExpressResponse) => {
+  try {
+    // Get all portfolio stocks
+    const portfolioStocks = await Portfolio.find().lean();
+
+    if (portfolioStocks.length === 0) {
+      res.json({
+        success: true,
+        message: "No stocks in portfolio to refresh",
+        results: [],
+      });
+      return;
+    }
+
+    console.log(`[Portfolio] Refreshing price history for ${portfolioStocks.length} stocks`);
+
+    // Refresh all stocks (sequentially to avoid rate limits)
+    const results = [];
+    for (const stock of portfolioStocks) {
+      try {
+        const storedCount = await fetchAndStoreHistoricalPrices(stock.ticker, 50);
+        const movingAverage50 = await calculateMovingAverage(stock.ticker, 50);
+
+        // Update lastUpdated timestamp
+        await Portfolio.findOneAndUpdate(
+          { ticker: stock.ticker },
+          { lastUpdated: new Date() }
+        );
+
+        results.push({
+          ticker: stock.ticker,
+          success: true,
+          storedPrices: storedCount,
+          movingAverage50,
+        });
+
+        console.log(`[Portfolio] Refreshed ${stock.ticker} - stored ${storedCount} prices`);
+      } catch (error) {
+        console.error(`[Portfolio] Failed to refresh ${stock.ticker}:`, error);
+        results.push({
+          ticker: stock.ticker,
+          success: false,
+          error: (error as Error).message || "Unknown error",
+        });
+      }
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failureCount = results.filter((r) => !r.success).length;
+
+    res.json({
+      success: true,
+      message: `Refreshed ${successCount} of ${portfolioStocks.length} stocks`,
+      successCount,
+      failureCount,
+      results,
+    });
+  } catch (error) {
+    console.error("[Portfolio] Error during refresh-all:", error);
+    res.status(500).json({
+      error: "Failed to refresh portfolio",
+      details: (error as Error).message || "Unknown error",
+    });
+  }
+});
+
+/**
  * POST /api/portfolio/:ticker/refresh
  * Manually refresh price history for a specific ticker
  */

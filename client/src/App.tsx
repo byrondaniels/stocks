@@ -4,6 +4,7 @@
  */
 
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { Portfolio } from './pages/Portfolio';
 import { InsiderLookup } from './pages/InsiderLookup';
 import { StockDetail } from './pages/StockDetail';
@@ -48,6 +49,28 @@ function App() {
             <Route path="/insiders" element={<InsiderLookup />} />
           </Routes>
         </main>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#333',
+              color: '#fff',
+            },
+            success: {
+              iconTheme: {
+                primary: '#4ade80',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </div>
     </BrowserRouter>
   );
