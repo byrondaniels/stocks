@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/stocks";
+  process.env.MONGODB_URI || "mongodb://localhost:27011/stocks";
 
 /**
  * Connect to MongoDB with connection pooling

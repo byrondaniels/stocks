@@ -11,7 +11,6 @@ export const PortfolioSchema = new Schema(
       required: true,
       uppercase: true,
       trim: true,
-      index: true,
     },
     shares: {
       type: Number,
@@ -53,12 +52,10 @@ export const StockPriceSchema = new Schema(
       required: true,
       uppercase: true,
       trim: true,
-      index: true,
     },
     date: {
       type: Date,
       required: true,
-      index: true,
     },
     open: {
       type: Number,
@@ -109,7 +106,6 @@ export const StockMetricsSchema = new Schema(
       required: true,
       uppercase: true,
       trim: true,
-      index: true,
     },
     dataType: {
       type: String,
@@ -125,7 +121,6 @@ export const StockMetricsSchema = new Schema(
       type: Date,
       required: true,
       default: Date.now,
-      index: true,
     },
   },
   {
@@ -149,7 +144,6 @@ export const InsiderTransactionSchema = new Schema(
       uppercase: true,
       trim: true,
       unique: true, // One document per ticker
-      index: true,
     },
     cik: {
       type: String,
@@ -189,7 +183,6 @@ export const InsiderTransactionSchema = new Schema(
       type: Date,
       required: true,
       default: Date.now,
-      index: true,
     },
   },
   {
