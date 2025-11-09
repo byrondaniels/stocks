@@ -8,7 +8,7 @@ services:
     environment:
       MONGO_INITDB_DATABASE: stocks
     ports:
-      - "27017:27017"
+      - "27011:27017"
     volumes:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb

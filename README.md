@@ -133,7 +133,7 @@ make setup
    PORT=3001
 
    # MongoDB Configuration
-   MONGODB_URI=mongodb://localhost:27017/stocks
+   MONGODB_URI=mongodb://localhost:27011/stocks
    ```
 
 ### Step 4: Start MongoDB (Docker)
@@ -147,7 +147,7 @@ make docker-up
 This will:
 - Pull the MongoDB 7.0 Docker image (if not already downloaded)
 - Create and start a MongoDB container named `stocks-mongodb`
-- Expose MongoDB on port `27017`
+- Expose MongoDB on port `27011`
 - Create persistent volumes for data storage
 
 **Verify MongoDB is running:**
@@ -366,7 +366,7 @@ MongoDB runs in a Docker container using Docker Compose. The configuration is de
 **Container Details:**
 - **Image**: `mongo:7.0`
 - **Container Name**: `stocks-mongodb`
-- **Port**: `27017:27017` (host:container)
+- **Port**: `27011:27017` (host:container)
 - **Network**: `stocks-network`
 - **Volumes**:
   - `mongodb_data` - Persistent data storage
@@ -379,9 +379,9 @@ MongoDB runs in a Docker container using Docker Compose. The configuration is de
 - Can be reset with `make docker-clean` (WARNING: deletes all data)
 
 **Connection from Application:**
-- The app connects to `localhost:27017` (mapped from container)
+- The app connects to `localhost:27011` (mapped from container port 27017)
 - No code changes needed when switching between Docker and local MongoDB
-- Connection string in `.env`: `MONGODB_URI=mongodb://localhost:27017/stocks`
+- Connection string in `.env`: `MONGODB_URI=mongodb://localhost:27011/stocks`
 
 ---
 
@@ -477,7 +477,7 @@ make mongo-shell
 **Common Issues:**
 
 - **Container not starting**: Ensure Docker is running (`docker ps`)
-- **Port 27017 already in use**: Stop any local MongoDB instance or change the port in `docker-compose.yml`
+- **Port 27011 already in use**: Stop any process using port 27011 or change the port in `docker-compose.yml`
 - **Permission errors**: Make sure Docker has proper permissions on your system
 - **Data persistence**: MongoDB data is stored in Docker volumes. Use `make docker-clean` to reset (WARNING: deletes all data)
 
