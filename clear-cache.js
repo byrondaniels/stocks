@@ -5,12 +5,9 @@
  * Example: node clear-cache.js AAPL
  */
 
-const ticker = process.argv[2];
-if (!ticker) {
-  console.error('Usage: node clear-cache.js TICKER');
-  console.error('Example: node clear-cache.js AAPL');
-  process.exit(1);
-}
+// Simple script without external dependencies
+
+// No arguments needed - always clears entire collection
 
 async function clearCache() {
   // Dynamic import for MongoDB
@@ -24,23 +21,18 @@ async function clearCache() {
     console.log('✓ Connected to MongoDB');
 
     const db = client.db();
-    const upperTicker = ticker.toUpperCase();
 
-    // Clear from the insidertransactions collection
-    const result = await db.collection('insidertransactions').deleteOne({
-      ticker: upperTicker
-    });
-
-    if (result.deletedCount > 0) {
-      console.log(`✓ Cleared cache for ${upperTicker}`);
-      console.log('  Next lookup will fetch fresh data from SEC with the updated parser');
-    } else {
-      console.log(`ℹ No cached data found for ${upperTicker}`);
-      console.log('  The ticker may not have been looked up yet, or cache already expired');
-    }
+    // Drop the entire insiderTransactions collection
+    await db.collection('insiderTransactions').drop();
+    console.log('✓ Cleared all insider transaction cache data');
+    console.log('  The entire cache collection has been dropped and will be recreated on next use');
   } catch (error) {
-    console.error('✗ Failed to clear cache:', error.message);
-    process.exit(1);
+    if (error.message.includes('ns not found')) {
+      console.log('ℹ No insider transaction cache found (collection does not exist)');
+    } else {
+      console.error('✗ Failed to clear cache:', error.message);
+      process.exit(1);
+    }
   } finally {
     await client.close();
   }

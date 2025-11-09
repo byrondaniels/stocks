@@ -443,8 +443,9 @@ describe('parseOwnershipXml', () => {
   it('should parse the XML and return an array of transactions', () => {
     const transactions = parseOwnershipXml(EXAMPLE_OWNERSHIP_XML, mockFiling, mockCik);
 
-    // Should have 6 non-derivative + 3 derivative = 9 total transactions
-    expect(transactions).toHaveLength(9);
+    // Should have 5 non-derivative + 3 derivative = 8 total transactions
+    // (M non-derivative transaction filtered out as duplicate)
+    expect(transactions).toHaveLength(8);
   });
 
   it('should correctly parse insider name from reportingOwner', () => {
@@ -463,28 +464,28 @@ describe('parseOwnershipXml', () => {
       transactions = parseOwnershipXml(EXAMPLE_OWNERSHIP_XML, mockFiling, mockCik);
     });
 
-    it('should parse transaction 1 (M code - Exercise/conversion)', () => {
+    it('should parse transaction 1 (F code - Tax withholding)', () => {
       const tx = transactions[0];
       expect(tx.date).toBe('2025-10-15');
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.formType).toBe('4');
-      expect(tx.transactionCode).toBe('M');
-      expect(tx.type).toBe('other'); // M is exercise/conversion
-      expect(tx.shares).toBe(16457);
-      expect(tx.price).toBeNull(); // No price for this transaction
+      expect(tx.transactionCode).toBe('F');
+      expect(tx.type).toBe('sell'); // F is payment of tax liability
+      expect(tx.shares).toBe(8062);
+      expect(tx.price).toBe(249.34);
       expect(tx.securityTitle).toBe('Common Stock');
       expect(tx.source).toContain(mockCik);
     });
 
-    it('should parse transaction 2 (F code - Tax liability)', () => {
+    it('should parse transaction 2 (S code - Sale)', () => {
       const tx = transactions[1];
-      expect(tx.date).toBe('2025-10-15');
+      expect(tx.date).toBe('2025-10-16');
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.formType).toBe('4');
-      expect(tx.transactionCode).toBe('F');
-      expect(tx.type).toBe('other'); // F is payment of tax liability
-      expect(tx.shares).toBe(8062);
-      expect(tx.price).toBe(249.34);
+      expect(tx.transactionCode).toBe('S');
+      expect(tx.type).toBe('sell');
+      expect(tx.shares).toBe(500);
+      expect(tx.price).toBe(245.89);
       expect(tx.securityTitle).toBe('Common Stock');
     });
 
@@ -536,12 +537,12 @@ describe('parseOwnershipXml', () => {
     it('should correctly identify all sales transactions', () => {
       const salesTransactions = transactions.filter(tx => tx.type === 'sell');
 
-      // 4 sale transactions (S code)
-      expect(salesTransactions).toHaveLength(4);
+      // 5 sale transactions (4 S code + 1 F code)
+      expect(salesTransactions).toHaveLength(5);
 
       // Total shares sold
       const totalSharesSold = salesTransactions.reduce((sum, tx) => sum + tx.shares, 0);
-      expect(totalSharesSold).toBe(4199); // 500 + 1665 + 1534 + 500
+      expect(totalSharesSold).toBe(12261); // 500 + 1665 + 1534 + 500 + 8062 (F transaction)
     });
   });
 
@@ -553,12 +554,12 @@ describe('parseOwnershipXml', () => {
     });
 
     it('should parse derivative transaction 1 (RSU exercise)', () => {
-      const tx = transactions[6]; // First derivative transaction
+      const tx = transactions[5]; // First derivative transaction
       expect(tx.date).toBe('2025-10-15');
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.formType).toBe('4');
       expect(tx.transactionCode).toBe('M');
-      expect(tx.type).toBe('other'); // M is exercise/conversion
+      expect(tx.type).toBe('exercise'); // M is exercise/conversion
       expect(tx.shares).toBe(5530);
       expect(tx.price).toBeNull();
       expect(tx.securityTitle).toBe('Restricted Stock Unit');
@@ -569,7 +570,7 @@ describe('parseOwnershipXml', () => {
       expect(tx.date).toBe('2025-10-15');
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.transactionCode).toBe('M');
-      expect(tx.type).toBe('other');
+      expect(tx.type).toBe('exercise');
       expect(tx.shares).toBe(5816);
       expect(tx.price).toBeNull();
       expect(tx.securityTitle).toBe('Restricted Stock Unit');
@@ -580,7 +581,7 @@ describe('parseOwnershipXml', () => {
       expect(tx.date).toBe('2025-10-15');
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.transactionCode).toBe('M');
-      expect(tx.type).toBe('other');
+      expect(tx.type).toBe('exercise');
       expect(tx.shares).toBe(5111);
       expect(tx.price).toBeNull();
       expect(tx.securityTitle).toBe('Restricted Stock Unit');
@@ -671,21 +672,23 @@ describe('parseOwnershipXml', () => {
     it('should provide accurate data for user display - insider activity summary', () => {
       const transactions = parseOwnershipXml(EXAMPLE_OWNERSHIP_XML, mockFiling, mockCik);
 
-      // What the user sees: count of buy vs sell transactions
+      // What the user sees: count of buy vs sell vs exercise transactions
       const sellCount = transactions.filter(tx => tx.type === 'sell').length;
       const buyCount = transactions.filter(tx => tx.type === 'buy').length;
+      const exerciseCount = transactions.filter(tx => tx.type === 'exercise').length;
       const otherCount = transactions.filter(tx => tx.type === 'other').length;
 
-      expect(sellCount).toBe(4); // 4 S transactions
+      expect(sellCount).toBe(5); // 4 S transactions + 1 F transaction
       expect(buyCount).toBe(0); // No P or A transactions
-      expect(otherCount).toBe(5); // 2 F/M non-derivative + 3 M derivative
+      expect(exerciseCount).toBe(3); // 3 M derivative only (non-derivative M filtered out)
+      expect(otherCount).toBe(0); // No other types
 
       // Net shares calculation (for sells)
       const totalSellShares = transactions
         .filter(tx => tx.type === 'sell')
         .reduce((sum, tx) => sum + tx.shares, 0);
 
-      expect(totalSellShares).toBe(4199);
+      expect(totalSellShares).toBe(12261);
     });
 
     it('should correctly categorize transaction types for user display', () => {
@@ -693,12 +696,12 @@ describe('parseOwnershipXml', () => {
 
       // Transaction type mapping for user understanding
       const typeMap = {
-        M: 'other', // Exercise or conversion
-        F: 'other', // Payment of tax liability
-        S: 'sell',  // Sale
-        P: 'buy',   // Purchase
-        A: 'buy',   // Award/grant
-        D: 'sell'   // Disposition
+        M: 'exercise', // Exercise or conversion
+        F: 'sell',     // Payment of tax liability
+        S: 'sell',     // Sale
+        P: 'buy',      // Purchase
+        A: 'buy',      // Award/grant
+        D: 'sell'      // Disposition
       };
 
       transactions.forEach(tx => {
