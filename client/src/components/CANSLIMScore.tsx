@@ -54,7 +54,7 @@ export function CANSLIMScore({ ticker }: CANSLIMScoreProps) {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/stock/canslim?ticker=${ticker}`);
+      const response = await fetch(`/api/canslim?ticker=${ticker}`);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -74,7 +74,7 @@ export function CANSLIMScore({ ticker }: CANSLIMScoreProps) {
     try {
       setRefreshing(true);
       setError(null);
-      const response = await fetch(`/api/stock/canslim/refresh?ticker=${ticker}`, {
+      const response = await fetch(`/api/canslim/refresh?ticker=${ticker}`, {
         method: 'POST',
       });
 
