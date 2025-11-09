@@ -30,11 +30,45 @@ function formatDate(value: string | null) {
   if (!value) {
     return "—";
   }
+
+  // Parse YYYY-MM-DD as local date to avoid timezone issues
+  const parts = value.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+    const day = parseInt(parts[2], 10);
+    const date = new Date(year, month, day);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString();
+    }
+  }
+
+  // Fallback to original parsing for other date formats
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
   return date.toLocaleDateString();
+}
+
+function getTransactionTypeLabel(type: "buy" | "sell" | "other", transactionCode?: string) {
+  if (type !== "other") {
+    return type;
+  }
+
+  // For "other" types, provide more descriptive labels based on transaction code
+  switch (transactionCode) {
+    case "M":
+      return "exercise";
+    case "F":
+      return "tax";
+    case "G":
+      return "gift";
+    case "C":
+      return "conversion";
+    default:
+      return transactionCode || "other";
+  }
 }
 
 export function InsiderLookup() {
@@ -181,7 +215,9 @@ export function InsiderLookup() {
                       <td>{formatDate(tx.date)}</td>
                       <td>{tx.insider}</td>
                       <td>{tx.formType}</td>
-                      <td className={`tx-type ${tx.type}`}>{tx.type}</td>
+                      <td className={`tx-type ${tx.type}`}>
+                        {getTransactionTypeLabel(tx.type, tx.transactionCode)}
+                      </td>
                       <td>{formatShares(tx.shares)}</td>
                       <td>{formatCurrency(tx.price)}</td>
                       <td>{tx.securityTitle ?? "—"}</td>
