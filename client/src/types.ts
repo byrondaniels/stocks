@@ -11,7 +11,7 @@ export interface InsiderTransaction {
   insider: string;
   formType: string;
   transactionCode?: string;
-  type: "buy" | "sell" | "other";
+  type: "buy" | "sell" | "exercise" | "other";
   shares: number;
   price?: number | null;
   securityTitle?: string;

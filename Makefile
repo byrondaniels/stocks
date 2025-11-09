@@ -63,7 +63,7 @@ help: ## Show this help message
 	@echo "  make clean-server       Remove server node_modules"
 	@echo "  make clean-client       Remove client node_modules"
 	@echo "  make check-env          Verify environment configuration"
-	@echo "  make clear-cache        Clear insider cache for a ticker (TICKER=AAPL)"
+	@echo "  make clear-cache        Clear all insider cache data (drops entire collection)"
 	@echo "  make logs               View application logs (if available)"
 	@echo ""
 
@@ -333,14 +333,29 @@ logs: ## View application logs
 		echo "Run 'make server-dev' or 'make client-dev' to see logs."; \
 	fi
 
-clear-cache: ## Clear insider transaction cache for a ticker (usage: make clear-cache TICKER=AAPL)
-	@if [ -z "$(TICKER)" ]; then \
-		echo "$(RED)✗ Please specify a ticker$(NC)"; \
-		echo "Usage: make clear-cache TICKER=AAPL"; \
-		exit 1; \
-	fi
-	@echo "$(BLUE)Clearing cache for $(TICKER)...$(NC)"
-	@node clear-cache.js $(TICKER)
+clear-cache: ## Clear all insider transaction cache data (drops entire collection)
+	@echo "$(BLUE)Clearing all insider transaction cache data...$(NC)"
+	@cd server && node -e " \
+		import('mongodb').then(({ MongoClient }) => { \
+			const uri = process.env.MONGODB_URI || 'mongodb://localhost:27011/stocks'; \
+			const client = new MongoClient(uri); \
+			return client.connect().then(() => { \
+				console.log('✓ Connected to MongoDB'); \
+				return client.db().collection('insiderTransactions').drop(); \
+			}).then(() => { \
+				console.log('✓ Cleared all insider transaction cache data'); \
+				console.log('  The entire cache collection has been dropped'); \
+				return client.close(); \
+			}); \
+		}).catch(err => { \
+			if (err.message.includes('ns not found')) { \
+				console.log('ℹ No insider transaction cache found (collection does not exist)'); \
+			} else { \
+				console.error('✗ Error:', err.message); \
+				process.exit(1); \
+			} \
+		}); \
+	"
 
 # ================================================
 # Additional Helpful Commands

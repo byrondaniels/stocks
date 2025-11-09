@@ -117,10 +117,18 @@ export function parseOwnershipXml(
 
       if (transactionCode === "M") {
         // M = Exercise or conversion of derivative security
-        type = "other";
+        
+        // Skip non-derivative M transactions that are results of derivative conversions
+        // These represent the underlying shares acquired from RSU/option exercises
+        // which we already show via the derivative transactions themselves
+        if (!isDerivative && acquireDisposed === "A") {
+          return; // Skip this duplicate transaction
+        }
+        
+        type = "exercise";
       } else if (transactionCode === "F") {
         // F = Payment of exercise price or tax liability
-        type = "other";
+        type = "sell";
       } else if (transactionCode === "S") {
         // S = Open market or private sale
         type = "sell";

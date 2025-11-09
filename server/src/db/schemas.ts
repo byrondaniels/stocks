@@ -158,7 +158,7 @@ export const InsiderTransactionSchema = new Schema(
           transactionCode: { type: String },
           type: {
             type: String,
-            enum: ["buy", "sell", "other"],
+            enum: ["buy", "sell", "exercise", "other"],
             required: true,
           },
           shares: { type: Number, required: true },
