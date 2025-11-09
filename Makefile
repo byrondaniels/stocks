@@ -18,7 +18,7 @@ NC := \033[0m # No Color
 .PHONY: build dev test test-watch test-coverage
 .PHONY: docker-up docker-down docker-restart docker-logs docker-status docker-clean
 .PHONY: mongo-start mongo-stop mongo-status mongo-shell
-.PHONY: logs check-env
+.PHONY: logs check-env clear-cache
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -63,6 +63,7 @@ help: ## Show this help message
 	@echo "  make clean-server       Remove server node_modules"
 	@echo "  make clean-client       Remove client node_modules"
 	@echo "  make check-env          Verify environment configuration"
+	@echo "  make clear-cache        Clear insider cache for a ticker (TICKER=AAPL)"
 	@echo "  make logs               View application logs (if available)"
 	@echo ""
 
@@ -331,6 +332,15 @@ logs: ## View application logs
 		echo "$(YELLOW)No log file found. Logs are printed to console during development.$(NC)"; \
 		echo "Run 'make server-dev' or 'make client-dev' to see logs."; \
 	fi
+
+clear-cache: ## Clear insider transaction cache for a ticker (usage: make clear-cache TICKER=AAPL)
+	@if [ -z "$(TICKER)" ]; then \
+		echo "$(RED)✗ Please specify a ticker$(NC)"; \
+		echo "Usage: make clear-cache TICKER=AAPL"; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Clearing cache for $(TICKER)...$(NC)"
+	@node clear-cache.js $(TICKER)
 
 # ================================================
 # Additional Helpful Commands
