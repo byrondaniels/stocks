@@ -652,3 +652,66 @@
     font-size: 0.75rem;
   }
 }
+
+/* Chart Controls */
+.chart-controls {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chart-toggle {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggle-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.toggle-btn.active {
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.toggle-btn.active:hover {
+  background: #2563eb;
+  color: white;
+}
+
+/* Price History Section */
+.price-history-section {
+  margin: 2rem 0;
+}
+
+@media (max-width: 768px) {
+  .chart-controls {
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .toggle-btn {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+}

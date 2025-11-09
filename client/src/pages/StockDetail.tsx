@@ -219,7 +219,7 @@ export function StockDetail() {
         const response = await fetch(`/api/stock/historical?ticker=${encodeURIComponent(ticker)}&days=${HISTORICAL_DAYS_DEFAULT}`);
         if (response.ok) {
           const data = await response.json();
-          setPriceHistory(data);
+          setPriceHistory(data.prices || []);
         }
       } catch (err) {
         console.error('Failed to fetch price history:', err);
@@ -436,7 +436,7 @@ export function StockDetail() {
             <div className="loading-state">Loading price history...</div>
           ) : priceHistory.length > 0 ? (
             <PriceLineChart
-              data={priceHistory.map(p => ({ date: p.date, close: p.close }))}
+              data={priceHistory}
               ticker={stock.ticker}
             />
           ) : (
