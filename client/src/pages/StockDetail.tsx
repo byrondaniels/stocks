@@ -142,6 +142,9 @@ export function StockDetail() {
       return;
     }
 
+    // Set page title
+    document.title = `${ticker} - Stock Portfolio`;
+
     fetchStockDetail();
     fetchInsiderData();
     fetchOwnershipData();
@@ -196,6 +199,14 @@ export function StockDetail() {
       const response = await fetch(`/api/portfolio/${ticker}`, {
         method: 'DELETE',
       });
+
+      if (response.ok) {
+        navigate('/portfolio');
+      }
+    } catch (err) {
+      console.error('Failed to delete stock:', err);
+    }
+  };
 
   useEffect(() => {
     if (!ticker) return;
@@ -263,9 +274,20 @@ export function StockDetail() {
 
   return (
     <div className="app">
-      <button onClick={() => navigate('/portfolio')} className="btn-back">
-        ← Back to Portfolio
-      </button>
+      {/* Breadcrumb Navigation */}
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <ol className="breadcrumb-list">
+          <li className="breadcrumb-item">
+            <button onClick={() => navigate('/portfolio')} className="breadcrumb-link">
+              Portfolio
+            </button>
+          </li>
+          <li className="breadcrumb-separator">/</li>
+          <li className="breadcrumb-item breadcrumb-current" aria-current="page">
+            {stock.ticker}
+          </li>
+        </ol>
+      </nav>
 
       {/* Stock Header */}
       <div className="stock-header">

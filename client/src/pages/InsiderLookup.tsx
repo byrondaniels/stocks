@@ -1,4 +1,5 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 
 const TICKER_REGEX = /^[A-Z]{1,5}(\.[A-Z0-9]{1,4})?$/;
 
@@ -59,10 +60,49 @@ function formatDate(value: string | null) {
 }
 
 export function InsiderLookup() {
+  const { ticker: urlTicker } = useParams<{ ticker?: string }>();
   const [ticker, setTicker] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<InsiderResponse | null>(null);
+
+  // Set page title
+  useEffect(() => {
+    document.title = "Insider Lookup - Stock Portfolio";
+  }, []);
+
+  // Handle URL ticker parameter
+  useEffect(() => {
+    if (urlTicker) {
+      setTicker(urlTicker.toUpperCase());
+      // Auto-submit for legacy URL support
+      const fetchInsiderData = async () => {
+        const trimmed = urlTicker.trim().toUpperCase();
+        if (!trimmed || !TICKER_REGEX.test(trimmed)) {
+          setError("Please enter a valid U.S. ticker (e.g. AAPL, BRK.B).");
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
+        setResult(null);
+        try {
+          const response = await fetch(`/api/insiders?ticker=${encodeURIComponent(trimmed)}`);
+          if (!response.ok) {
+            const payload = await response.json().catch(() => null);
+            throw new Error(payload?.error ?? `Lookup failed with status ${response.status}.`);
+          }
+          const payload = (await response.json()) as InsiderResponse;
+          setResult(payload);
+        } catch (fetchError) {
+          setError(fetchError instanceof Error ? fetchError.message : "Unexpected error while loading data.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchInsiderData();
+    }
+  }, [urlTicker]);
 
   const summaryLabel = useMemo(() => {
     if (!result) {

@@ -36,6 +36,7 @@ export function Portfolio() {
   };
 
   useEffect(() => {
+    document.title = "My Portfolio - Stock Portfolio";
     fetchPortfolio();
   }, []);
 
