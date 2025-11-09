@@ -1,4 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { PriceHistoryPoint } from '../types';
 import './PriceLineChart.css';
 
 export interface PricePoint {
@@ -7,7 +8,7 @@ export interface PricePoint {
 }
 
 interface PriceLineChartProps {
-  data: PricePoint[];
+  data: PricePoint[] | PriceHistoryPoint[];
   ticker: string;
   compact?: boolean; // For sparkline mode
   height?: number;
