@@ -57,16 +57,17 @@ Before you begin, ensure you have the following installed:
 
 - **Node.js 18+** - [Download here](https://nodejs.org/)
 - **npm** (comes with Node.js)
-- **MongoDB** - [Installation guide](https://docs.mongodb.com/manual/installation/)
-  - **macOS**: `brew tap mongodb/brew && brew install mongodb-community`
-  - **Ubuntu**: `sudo apt-get install mongodb`
-  - **Windows**: Download from [MongoDB Download Center](https://www.mongodb.com/try/download/community)
+- **Docker** - [Installation guide](https://docs.docker.com/get-docker/)
+  - **macOS**: [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+  - **Ubuntu**: [Docker Engine for Linux](https://docs.docker.com/engine/install/ubuntu/)
+  - **Windows**: [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
 
 Verify installations:
 ```bash
 node --version   # Should be 18.x or higher
 npm --version    # Should be 8.x or higher
-mongod --version # Should be 4.x or higher
+docker --version # Should be 20.x or higher
+docker compose version # Should be v2.x or higher
 ```
 
 ### Step 1: Clone the Repository
@@ -132,30 +133,36 @@ make setup
    PORT=3001
 
    # MongoDB Configuration
-   MONGODB_URI=mongodb://localhost:27017/stocks
+   MONGODB_URI=mongodb://localhost:27011/stocks
    ```
 
-### Step 4: Start MongoDB
+### Step 4: Start MongoDB (Docker)
 
-**macOS/Linux:**
+Start MongoDB in a Docker container:
+
 ```bash
-# Start MongoDB as a service
-make mongo-start
-
-# Or start manually
-mongod --dbpath ~/data/db
+make docker-up
 ```
 
-**Windows:**
+This will:
+- Pull the MongoDB 7.0 Docker image (if not already downloaded)
+- Create and start a MongoDB container named `stocks-mongodb`
+- Expose MongoDB on port `27011`
+- Create persistent volumes for data storage
+
+**Verify MongoDB is running:**
 ```bash
-# MongoDB usually starts as a Windows service automatically
-# Or run manually:
-mongod
+make docker-status
 ```
 
-To verify MongoDB is running:
+**View MongoDB logs:**
 ```bash
-mongosh  # Should connect to MongoDB
+make docker-logs
+```
+
+**Access MongoDB shell:**
+```bash
+make mongo-shell
 ```
 
 ### Step 5: Install Dependencies
@@ -271,9 +278,14 @@ make test               # Run server tests
 make test-watch         # Run tests in watch mode
 make test-coverage      # Run tests with coverage report
 
-# Database
-make mongo-start        # Start MongoDB (macOS/Linux)
-make mongo-stop         # Stop MongoDB (macOS/Linux)
+# Database (Docker)
+make docker-up          # Start MongoDB in Docker container
+make docker-down        # Stop and remove MongoDB container
+make docker-restart     # Restart MongoDB container
+make docker-logs        # View MongoDB container logs
+make docker-status      # Check MongoDB container status
+make docker-clean       # Remove container and volumes (deletes data!)
+make mongo-shell        # Open MongoDB shell
 
 # Utilities
 make clean              # Remove node_modules from both projects
@@ -347,6 +359,30 @@ Constants are centralized in:
 - **Server**: `server/src/constants.ts` (HTTP status codes, error messages, cache TTLs, etc.)
 - **Client**: `client/src/constants.ts` (UI constants, chart colors, etc.)
 
+### Docker Configuration
+
+MongoDB runs in a Docker container using Docker Compose. The configuration is defined in `docker-compose.yml`:
+
+**Container Details:**
+- **Image**: `mongo:7.0`
+- **Container Name**: `stocks-mongodb`
+- **Port**: `27011:27017` (host:container)
+- **Network**: `stocks-network`
+- **Volumes**:
+  - `mongodb_data` - Persistent data storage
+  - `mongodb_config` - MongoDB configuration
+- **Health Check**: Automatic health monitoring with retry logic
+
+**Volume Management:**
+- Data persists across container restarts
+- Located in Docker's volume directory
+- Can be reset with `make docker-clean` (WARNING: deletes all data)
+
+**Connection from Application:**
+- The app connects to `localhost:27011` (mapped from container port 27017)
+- No code changes needed when switching between Docker and local MongoDB
+- Connection string in `.env`: `MONGODB_URI=mongodb://localhost:27011/stocks`
+
 ---
 
 ## 📦 Deployment
@@ -371,13 +407,20 @@ Set `VITE_API_BASE_URL` in the client if deploying separately:
 VITE_API_BASE_URL=https://your-api-domain.com
 ```
 
-### MongoDB Setup
+### MongoDB Setup for Production
 
-For production, use a managed MongoDB service:
+For production deployment, you have two options:
+
+**Option 1: Managed MongoDB Service (Recommended)**
 - [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) (Free tier available)
 - [DigitalOcean Managed MongoDB](https://www.digitalocean.com/products/managed-databases-mongodb)
+- Update `MONGODB_URI` in production environment variables to the connection string
 
-Update `MONGODB_URI` in production environment variables.
+**Option 2: Self-Hosted Docker MongoDB**
+- Deploy the same Docker Compose setup on your production server
+- Ensure proper security (authentication, network isolation, firewall rules)
+- Set up regular backups using Docker volume backups
+- Consider using Docker secrets for sensitive configuration
 
 ---
 
@@ -400,11 +443,13 @@ npm run test:coverage
 
 ## 📝 Notes
 
-- **Data Persistence**: Portfolio data is stored in MongoDB
+- **Docker MongoDB**: MongoDB runs in Docker for easy setup and consistent environment across all platforms
+- **Data Persistence**: Portfolio data is stored in MongoDB (persisted in Docker volumes)
 - **Insider Data**: Cached in MongoDB for 24 hours to minimize SEC API calls
 - **Rate Limits**: The app respects API rate limits and provides retry-after information
 - **SEC Compliance**: Includes 250ms politeness delay for SEC requests
 - **Free Tier**: All APIs have generous free tiers suitable for personal use
+- **No Installation Required**: MongoDB doesn't need to be installed locally - Docker handles everything
 
 ---
 
@@ -413,13 +458,28 @@ npm run test:coverage
 ### MongoDB Connection Issues
 
 ```bash
-# Check if MongoDB is running
-mongosh
+# Check if MongoDB container is running
+make docker-status
 
 # If not running, start it
-make mongo-start
-# Or manually: mongod
+make docker-up
+
+# View MongoDB logs for errors
+make docker-logs
+
+# Restart MongoDB container
+make docker-restart
+
+# Access MongoDB shell to verify connection
+make mongo-shell
 ```
+
+**Common Issues:**
+
+- **Container not starting**: Ensure Docker is running (`docker ps`)
+- **Port 27011 already in use**: Stop any process using port 27011 or change the port in `docker-compose.yml`
+- **Permission errors**: Make sure Docker has proper permissions on your system
+- **Data persistence**: MongoDB data is stored in Docker volumes. Use `make docker-clean` to reset (WARNING: deletes all data)
 
 ### Port Already in Use
 
