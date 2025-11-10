@@ -4,10 +4,13 @@ on:
   pull_request:
     branches: [ main, master ]
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
+      - 'claude/**'
 
 jobs:
-  test:
+  lint-and-test:
     runs-on: ubuntu-latest
 
     strategy:
@@ -23,14 +26,32 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: server/package-lock.json
+        cache-dependency-path: |
+          server/package-lock.json
+          client/package-lock.json
 
     - name: Install server dependencies
       working-directory: ./server
       run: npm ci
+
+    - name: Install client dependencies
+      working-directory: ./client
+      run: npm ci
+
+    - name: Lint server
+      working-directory: ./server
+      run: npm run lint
+
+    - name: Lint client
+      working-directory: ./client
+      run: npm run lint
 
     - name: Run server tests
       working-directory: ./server
       run: npm test
       env:
         NODE_ENV: test
+
+    - name: Build client
+      working-directory: ./client
+      run: npm run build
