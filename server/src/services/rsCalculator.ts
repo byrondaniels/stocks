@@ -26,7 +26,25 @@ export interface RSRating {
 
 /**
  * Calculates IBD-style RS rating for a stock
+ *
  * The rating compares the stock's price performance to all other stocks in the portfolio
+ * using Investor's Business Daily methodology:
+ * - 40% weight on most recent 3 months
+ * - 20% weight each on months 4-6, 7-9, and 10-12
+ * - Returns percentile rank (1-99) where higher is better
+ *
+ * @param ticker Stock ticker symbol
+ * @returns RS rating object with percentile rank and performance breakdown
+ *
+ * @example
+ * const rsRating = await calculateRSRating('AAPL');
+ * console.log(`RS Rating: ${rsRating.rating}/99`);              // e.g., 87/99
+ * console.log(`3-month: ${rsRating.pricePerformance.month3}%`); // e.g., 15.5%
+ * console.log(`12-month: ${rsRating.pricePerformance.month12}%`); // e.g., 28.3%
+ *
+ * if (rsRating.rating >= 80) {
+ *   console.log('Strong relative strength - potential leader');
+ * }
  */
 export async function calculateRSRating(ticker: string): Promise<RSRating> {
   const normalizedTicker = ticker.toUpperCase();
@@ -77,7 +95,21 @@ export async function calculateRSRating(ticker: string): Promise<RSRating> {
 
 /**
  * Calculates the weighted price performance score for a stock
- * IBD methodology: 40% weight on last 3 months, 20% each on months 4-6, 7-9, 10-12
+ *
+ * IBD methodology applies different weights to different time periods:
+ * - Most recent 3 months: 40% weight (emphasizes recent momentum)
+ * - Months 4-6: 20% weight
+ * - Months 7-9: 20% weight
+ * - Months 10-12: 20% weight
+ *
+ * Requires at least 60 days of historical data to calculate.
+ *
+ * @param ticker Stock ticker symbol
+ * @returns Weighted performance score (percentage)
+ *
+ * @example
+ * const score = await calculatePricePerformance('AAPL');
+ * console.log(`Weighted RS Score: ${score.toFixed(2)}%`); // e.g., 22.35%
  */
 async function calculatePricePerformance(ticker: string): Promise<number> {
   try {
@@ -234,6 +266,21 @@ export async function getRSRating(ticker: string): Promise<RSRating | null> {
 
 /**
  * Gets RS rating from cache or calculates if not cached/stale
+ *
+ * Attempts to retrieve a cached RS rating from the database. If the cached
+ * rating is older than maxAgeHours, recalculates a fresh rating.
+ *
+ * @param ticker Stock ticker symbol
+ * @param maxAgeHours Maximum age of cached rating in hours (default: 24)
+ * @returns RS rating object (cached or freshly calculated)
+ *
+ * @example
+ * // Get RS rating, using cache if less than 24 hours old
+ * const rsRating = await getOrCalculateRSRating('AAPL');
+ *
+ * @example
+ * // Force calculation if cache is older than 1 hour
+ * const freshRating = await getOrCalculateRSRating('AAPL', 1);
  */
 export async function getOrCalculateRSRating(
   ticker: string,
