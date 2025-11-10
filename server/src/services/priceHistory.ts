@@ -10,9 +10,23 @@ import { getHistoricalPrices, type HistoricalPrice } from './stockData.js';
 
 /**
  * Fetch and store historical prices for a ticker
+ *
+ * Fetches price data from external API and stores it in the database.
+ * Uses upsert to avoid duplicates. Useful for initial data population
+ * or refreshing historical data.
+ *
  * @param ticker Stock ticker symbol
  * @param days Number of days of historical data to fetch (default: 50)
  * @returns Number of price records stored
+ *
+ * @example
+ * // Fetch 50 days of historical data for AAPL
+ * const count = await fetchAndStoreHistoricalPrices('AAPL');
+ * console.log(`Stored ${count} price records`);
+ *
+ * @example
+ * // Fetch 200 days for more comprehensive analysis
+ * const count = await fetchAndStoreHistoricalPrices('TSLA', 200);
  */
 export async function fetchAndStoreHistoricalPrices(
   ticker: string,
@@ -73,9 +87,22 @@ export async function fetchAndStoreHistoricalPrices(
 
 /**
  * Calculate the N-day moving average from stored prices
+ *
+ * Fetches the most recent N days of closing prices and calculates
+ * their average. Returns null if less than 20 days of data available.
+ *
  * @param ticker Stock ticker symbol
  * @param days Number of days for moving average (default: 50)
  * @returns Moving average value or null if insufficient data
+ *
+ * @example
+ * // Calculate 50-day moving average
+ * const ma50 = await calculateMovingAverage('AAPL');
+ * console.log(`50DMA: $${ma50?.toFixed(2)}`);
+ *
+ * @example
+ * // Calculate 200-day moving average
+ * const ma200 = await calculateMovingAverage('AAPL', 200);
  */
 export async function calculateMovingAverage(
   ticker: string,
@@ -183,8 +210,24 @@ export async function getPriceHistorySummary(ticker: string) {
 
 /**
  * Calculate 50DMA statistics including percentage difference from current price
+ *
+ * Combines current price with 50-day moving average to calculate how far
+ * the stock price is from its 50DMA. Positive values indicate price is above
+ * the MA (bullish), negative values indicate price is below (bearish).
+ *
  * @param ticker Stock ticker symbol
- * @returns Object with 50DMA, current price, and percentage difference
+ * @returns Object with 50DMA, current price, percentage difference, and metadata
+ *
+ * @example
+ * const stats = await calculate50DMA('AAPL');
+ * console.log(`Current: $${stats.currentPrice}`);              // e.g., 185.92
+ * console.log(`50DMA: $${stats.movingAverage50}`);            // e.g., 180.45
+ * console.log(`% Difference: ${stats.percentageDifference}%`); // e.g., 3.03
+ * console.log(`Data points: ${stats.priceCount}`);            // e.g., 50
+ *
+ * if (stats.percentageDifference > 0) {
+ *   console.log('Price is above 50DMA (bullish)');
+ * }
  */
 export async function calculate50DMA(ticker: string) {
   const normalizedTicker = ticker.toUpperCase();

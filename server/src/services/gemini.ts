@@ -58,6 +58,38 @@ export interface CANSLIMAnalysis {
 
 /**
  * Analyzes CANSLIM metrics using Gemini AI and returns scored analysis
+ *
+ * Uses Google's Gemini 2.0 Flash model to evaluate stock metrics according to
+ * William O'Neil's CANSLIM methodology. Each component (C, A, N, S) is scored
+ * 0-25 points for a total score out of 100.
+ *
+ * CANSLIM Components:
+ * - C: Current quarterly earnings growth (YoY)
+ * - A: Annual earnings growth (3-year average)
+ * - N: New highs (proximity to 52-week high)
+ * - S: Supply & Demand (volume analysis)
+ *
+ * @param metrics - Stock metrics including earnings, price, and volume data
+ * @returns Complete CANSLIM analysis with scores, strengths, weaknesses, and recommendation
+ * @throws {Error} If GEMINI_API_KEY is not configured or API call fails
+ *
+ * @example
+ * const metrics = {
+ *   ticker: 'AAPL',
+ *   currentEarningsGrowth: 28.5,
+ *   annualEarningsGrowth: 22.3,
+ *   isNearHighs: true,
+ *   distanceFromHigh: 3.2,
+ *   volumeRatio: 1.8,
+ *   currentPrice: 185.92,
+ *   fiftyTwoWeekHigh: 192.15,
+ *   fiftyTwoWeekLow: 124.17,
+ *   averageVolume: 58000000,
+ *   currentVolume: 104400000
+ * };
+ * const analysis = await analyzeCANSLIMWithGemini(metrics);
+ * console.log(analysis.totalScore);  // e.g., 87
+ * console.log(analysis.recommendation);  // e.g., "Strong buy - excellent CANSLIM profile"
  */
 export async function analyzeCANSLIMWithGemini(
   metrics: CANSLIMMetrics
@@ -96,6 +128,19 @@ export async function analyzeCANSLIMWithGemini(
 
 /**
  * Builds the prompt for Gemini to analyze CANSLIM metrics
+ *
+ * Constructs a detailed prompt that:
+ * - Explains the CANSLIM methodology
+ * - Provides the stock's metrics
+ * - Defines scoring criteria for each component
+ * - Specifies the expected JSON response format
+ *
+ * @param metrics - Stock metrics to include in the prompt
+ * @returns Formatted prompt string for Gemini API
+ *
+ * @example
+ * const prompt = buildCANSLIMPrompt(metrics);
+ * // Returns a comprehensive prompt with scoring guidelines
  */
 function buildCANSLIMPrompt(metrics: CANSLIMMetrics): string {
   return `You are a stock analysis expert specializing in the CANSLIM investment methodology created by William O'Neil.
@@ -191,6 +236,25 @@ Provide ONLY the JSON response, no additional text before or after.`;
 
 /**
  * Parses Gemini's response and extracts the CANSLIM analysis
+ *
+ * Handles JSON parsing with fallback error handling:
+ * - Removes markdown code block markers (```json)
+ * - Validates response structure
+ * - Returns default analysis if parsing fails
+ *
+ * @param responseText - Raw text response from Gemini API
+ * @returns Parsed CANSLIM analysis object
+ *
+ * @example
+ * const responseText = `{
+ *   "totalScore": 87,
+ *   "components": { ... },
+ *   "overallAnalysis": "Strong stock with excellent growth",
+ *   "strengths": ["High earnings growth", "Near 52-week high"],
+ *   "weaknesses": ["Moderate volume"],
+ *   "recommendation": "Buy"
+ * }`;
+ * const analysis = parseGeminiResponse(responseText);
  */
 function parseGeminiResponse(responseText: string): CANSLIMAnalysis {
   try {
