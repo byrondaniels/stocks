@@ -10,6 +10,7 @@ import { EmptyState } from '../components/EmptyState';
 import { DeleteConfirmation } from '../components/DeleteConfirmation';
 import { RefreshButton } from '../components/RefreshButton';
 import { useRefreshRateLimit } from '../hooks/useRefreshRateLimit';
+import { addRecentSearch } from '../utils/recentSearches';
 
 export function Portfolio() {
   const navigate = useNavigate();
@@ -86,6 +87,18 @@ export function Portfolio() {
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? `Failed to add stock: ${response.status}`);
+      }
+
+      // Fetch company name and save to recent searches
+      try {
+        const companyNameResponse = await fetch(`/api/stock/company-name?ticker=${encodeURIComponent(formData.ticker)}`);
+        if (companyNameResponse.ok) {
+          const data = await companyNameResponse.json();
+          addRecentSearch(formData.ticker, data.companyName);
+        }
+      } catch (err) {
+        // Silently fail - recent searches is not critical
+        console.warn('Failed to fetch company name for recent searches:', err);
       }
 
       // Refresh portfolio after adding

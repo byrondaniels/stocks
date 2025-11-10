@@ -22,6 +22,7 @@ import {
 } from "../constants.js";
 import { normalizeTicker, isValidTicker } from "../utils/validation.js";
 import { handleApiError, sendBadRequest } from "../utils/errorHandler.js";
+import { getCompanyName } from "../services/sec/ticker-map.js";
 
 const router = Router();
 
@@ -136,6 +137,34 @@ router.get("/rate-limits", (_req: Request, res: ExpressResponse) => {
 router.post("/clear-cache", (_req: Request, res: ExpressResponse) => {
   clearAllCaches();
   res.json({ success: true, message: "All caches cleared" });
+});
+
+/**
+ * GET /api/stock/company-name?ticker=AAPL
+ * Get company name for a ticker symbol
+ */
+router.get("/company-name", async (req: Request, res: ExpressResponse) => {
+  const rawTicker = (req.query.ticker as string | undefined) ?? "";
+  const ticker = normalizeTicker(rawTicker);
+
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
+    return;
+  }
+
+  try {
+    const companyName = await getCompanyName(ticker);
+    if (!companyName) {
+      res.status(HTTP_STATUS.NOT_FOUND).json({
+        error: "Company name not found for ticker"
+      });
+      return;
+    }
+    res.json({ ticker, companyName });
+  } catch (error) {
+    console.error(error);
+    handleApiError(res, error, "Unable to retrieve company name.");
+  }
 });
 
 export default router;
