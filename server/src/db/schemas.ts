@@ -195,3 +195,36 @@ InsiderTransactionSchema.index({ fetchedAt: 1 }, { expireAfterSeconds: 86400 });
 
 // Index for efficient lookups
 InsiderTransactionSchema.index({ ticker: 1 });
+
+/**
+ * Watchlist Collection Schema
+ * Stores tickers user wants to watch/track
+ */
+export const WatchlistSchema = new Schema(
+  {
+    ticker: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+      unique: true, // Each ticker can only be added once to watchlist
+    },
+    notes: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    addedDate: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: true, // Adds createdAt and updatedAt fields
+  }
+);
+
+// Indexes for watchlist
+WatchlistSchema.index({ ticker: 1 });
+WatchlistSchema.index({ addedDate: -1 });

@@ -52,6 +52,23 @@ export interface PortfolioSummary {
   totalGainLossPercent: number;
 }
 
+export interface WatchlistStock {
+  ticker: string;
+  notes?: string;
+  addedDate: string;
+  currentPrice?: number;
+  movingAverage50?: number | null;
+  percentageDifference?: number | null;
+  priceCount?: number;
+  latestDate?: string;
+  insiderActivity?: InsiderSummary;
+}
+
+export interface AddWatchlistFormData {
+  ticker: string;
+  notes?: string;
+}
+
 export interface OwnershipData {
   ticker: string;
   insiderOwnership: number; // percentage

@@ -14,9 +14,10 @@ interface StockCardProps {
   onRefresh?: (ticker: string) => Promise<void>;
   refreshing?: boolean;
   cooldownSeconds?: number;
+  isWatchlist?: boolean;
 }
 
-export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, cooldownSeconds }: StockCardProps) {
+export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, cooldownSeconds, isWatchlist = false }: StockCardProps) {
   const [priceHistory, setPriceHistory] = useState<PriceHistoryPoint[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -44,8 +45,8 @@ export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, co
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
 
-  const totalValue = stock.currentPrice !== undefined
-    ? stock.currentPrice * stock.shares
+  const totalValue = !isWatchlist && stock.currentPrice !== undefined
+    ? stock.currentPrice * (stock as any).shares
     : undefined;
   const isProfitable = stock.profitLoss !== undefined && stock.profitLoss >= 0;
 
@@ -60,7 +61,7 @@ export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, co
           >
             {stock.ticker}
           </button>
-          <div className="stock-shares">{stock.shares} shares</div>
+          {!isWatchlist && <div className="stock-shares">{(stock as any).shares} shares</div>}
         </div>
         <div className="stock-actions">
           {onRefresh && (
@@ -108,16 +109,34 @@ export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, co
           <span className="metric-label">Current Price</span>
           <span className="metric-value">{formatCurrency(stock.currentPrice)}</span>
         </div>
-        <div className="metric-row">
-          <span className="metric-label">Total Value</span>
-          <span className="metric-value">{formatCurrency(totalValue)}</span>
-        </div>
-        <div className="metric-row highlight">
-          <span className="metric-label">P/L</span>
-          <span className={`metric-value ${isProfitable ? 'profit' : 'loss'}`}>
-            {formatCurrency(stock.profitLoss)} ({formatPercent(stock.profitLossPercent)})
-          </span>
-        </div>
+        {!isWatchlist && (
+          <>
+            <div className="metric-row">
+              <span className="metric-label">Total Value</span>
+              <span className="metric-value">{formatCurrency(totalValue)}</span>
+            </div>
+            <div className="metric-row highlight">
+              <span className="metric-label">P/L</span>
+              <span className={`metric-value ${isProfitable ? 'profit' : 'loss'}`}>
+                {formatCurrency(stock.profitLoss)} ({formatPercent(stock.profitLossPercent)})
+              </span>
+            </div>
+          </>
+        )}
+        {isWatchlist && (stock as any).movingAverage50 && (
+          <div className="metric-row">
+            <span className="metric-label">50-Day MA</span>
+            <span className="metric-value">{formatCurrency((stock as any).movingAverage50)}</span>
+          </div>
+        )}
+        {isWatchlist && (stock as any).percentageDifference !== undefined && (stock as any).percentageDifference !== null && (
+          <div className="metric-row">
+            <span className="metric-label">vs 50-Day MA</span>
+            <span className={`metric-value ${(stock as any).percentageDifference >= 0 ? 'profit' : 'loss'}`}>
+              {formatPercent((stock as any).percentageDifference)}
+            </span>
+          </div>
+        )}
       </div>
 
       {stock.insiderActivity && (
@@ -127,10 +146,22 @@ export function StockCard({ stock, onRemove, onDetail, onRefresh, refreshing, co
         </div>
       )}
 
-      {stock.lastUpdated && (
+      {!isWatchlist && stock.lastUpdated && (
         <div className="stock-card-updated">
           <span className="updated-label">Last Updated:</span>
           <span className="updated-time">{formatDate(stock.lastUpdated)}</span>
+        </div>
+      )}
+      {isWatchlist && (stock as any).addedDate && (
+        <div className="stock-card-updated">
+          <span className="updated-label">Added:</span>
+          <span className="updated-time">{formatDate((stock as any).addedDate)}</span>
+        </div>
+      )}
+      {isWatchlist && (stock as any).notes && (
+        <div className="stock-card-notes">
+          <span className="notes-label">Notes:</span>
+          <span className="notes-text">{(stock as any).notes}</span>
         </div>
       )}
     </div>

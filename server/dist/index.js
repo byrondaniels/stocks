@@ -9,6 +9,7 @@ import { connectToDatabase } from "./db/index.js";
 // Import routes
 import insiderRoutes from "./routes/insider.routes.js";
 import portfolioRoutes from "./routes/portfolio.routes.js";
+import watchlistRoutes from "./routes/watchlist.routes.js";
 import stockDataRoutes from "./routes/stock-data.routes.js";
 import canslimRoutes from "./routes/canslim.routes.js";
 const PORT = process.env.PORT || 3001;
@@ -19,6 +20,7 @@ app.use(express.json());
 // Mount routes
 app.use("/api/insiders", insiderRoutes);
 app.use("/api/portfolio", portfolioRoutes);
+app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/stock", stockDataRoutes);
 app.use("/api/canslim", canslimRoutes);
 // Connect to MongoDB and start server
@@ -29,6 +31,7 @@ connectToDatabase()
         console.log(`Available endpoints:`);
         console.log(`  - /api/insiders       - SEC insider transactions`);
         console.log(`  - /api/portfolio      - Portfolio management`);
+        console.log(`  - /api/watchlist      - Watchlist management`);
         console.log(`  - /api/stock          - Stock data & prices`);
         console.log(`  - /api/canslim        - CANSLIM scoring`);
     });
