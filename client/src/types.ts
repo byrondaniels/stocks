@@ -45,6 +45,12 @@ export interface AddStockFormData {
   purchaseDate: string;
 }
 
+export interface RecentlySearchedStock {
+  ticker: string;
+  companyName: string;
+  timestamp: number;
+}
+
 export interface PortfolioSummary {
   totalValue: number;
   totalCost: number;
