@@ -48,7 +48,7 @@ export function AddWatchlistForm({ onAdd, loading }: AddWatchlistFormProps) {
         notes: '',
       });
       setErrors({});
-    } catch (error) {
+    } catch {
       // Error handling is done in parent component
     }
   };

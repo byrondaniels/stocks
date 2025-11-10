@@ -18,7 +18,7 @@ export function RSExplanation({ rating }: RSExplanationProps) {
     <div className="rs-explanation">
       <h3>About RS Rating</h3>
       <p>
-        The IBD Relative Strength (RS) Rating compares this stock's price performance
+        The IBD Relative Strength (RS) Rating compares this stock&apos;s price performance
         over the past 12 months against all other stocks in your portfolio. A rating of{' '}
         <strong>{rating}</strong> means this stock has outperformed{' '}
         <strong>{rating}%</strong> of stocks.

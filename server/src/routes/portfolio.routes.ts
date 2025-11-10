@@ -13,9 +13,7 @@ import {
   fetchAndStoreHistoricalPrices,
   calculateMovingAverage,
   getPriceHistorySummary,
-  calculate50DMA,
 } from "../services/priceHistory.js";
-import { getInsiderTransactions } from "../services/sec/insider-service.js";
 import { enrichPortfolioArray } from "../services/enrichment.service.js";
 import {
   HTTP_STATUS,
@@ -92,7 +90,7 @@ router.get("/:ticker", async (req: Request, res: ExpressResponse) => {
         profitLoss,
         profitLossPercent,
       });
-    } catch (error) {
+    } catch {
       // If we can't get current price, return without profit/loss metrics
       res.json({
         ticker: portfolioItem.ticker,

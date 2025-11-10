@@ -25,6 +25,7 @@ export default [
       ...tsPlugin.configs.recommended.rules,
       ...reactPlugin.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off', // Not needed in React 18+
+      'react/prop-types': 'off', // Using TypeScript for prop validation
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'react-hooks/rules-of-hooks': 'error',

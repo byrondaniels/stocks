@@ -113,7 +113,7 @@ export function AddStockForm({ onAdd, loading }: AddStockFormProps) {
 
       // Refresh recent searches list
       setRecentSearches(getRecentSearches());
-    } catch (error) {
+    } catch {
       // Error handling is done in parent component
     }
   };

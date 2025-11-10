@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import { WatchlistStock, AddWatchlistFormData } from '../types';
 import { AddWatchlistForm } from '../components/AddWatchlistForm';
 import { StockCard } from '../components/StockCard';
-import { EmptyState } from '../components/EmptyState';
 import { DeleteConfirmation } from '../components/DeleteConfirmation';
 import { RefreshButton } from '../components/RefreshButton';
 import { useRefreshRateLimit } from '../hooks/useRefreshRateLimit';

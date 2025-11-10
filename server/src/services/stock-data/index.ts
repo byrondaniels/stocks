@@ -31,7 +31,7 @@ import {
 import { getRateLimitStatus as getRateLimitStatusInternal } from "./rate-limiter.js";
 
 import { fetchAlphaVantageQuote, fetchAlphaVantageHistorical } from "./alpha-vantage.js";
-import { fetchFMPQuote, fetchFMPOwnership, fetchFMPFinancials } from "./fmp.js";
+import { fetchFMPQuote } from "./fmp.js";
 
 import type { StockPrice, OwnershipData, FinancialMetrics, HistoricalPrices } from "./types.js";
 

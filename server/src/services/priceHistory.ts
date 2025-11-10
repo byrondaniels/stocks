@@ -6,7 +6,7 @@
  */
 
 import { StockPrice } from '../db/index.js';
-import { getHistoricalPrices, type HistoricalPrice } from './stockData.js';
+import { getHistoricalPrices } from './stockData.js';
 
 /**
  * Fetch and store historical prices for a ticker
