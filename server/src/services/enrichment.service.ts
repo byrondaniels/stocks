@@ -104,7 +104,7 @@ export async function enrichStockData(stock: BaseStockData): Promise<EnrichedSto
       latestDate: dmaStats.latestDate,
       insiderActivity: insiderData?.summary || null,
     };
-  } catch (error) {
+  } catch {
     // If we can't get current price, fall back to DMA data
     const [dmaStats, insiderData] = await Promise.all([
       calculate50DMA(stock.ticker),
@@ -176,7 +176,7 @@ export async function enrichPortfolioStock(stock: PortfolioStockData): Promise<E
       latestDate: dmaStats.latestDate,
       insiderActivity: insiderData?.summary || null,
     };
-  } catch (error) {
+  } catch {
     // If we can't get current price, fall back to DMA data
     const [dmaStats, insiderData] = await Promise.all([
       calculate50DMA(stock.ticker),

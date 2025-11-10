@@ -8,8 +8,7 @@ import {
   getOrCalculateRSRating,
   calculateRSRating,
 } from "../services/rsCalculator.js";
-import { type ApiError } from "../services/stockData.js";
-import { HTTP_STATUS, ERROR_MESSAGES, RS_CACHE_HOURS } from "../constants.js";
+import { ERROR_MESSAGES, RS_CACHE_HOURS } from "../constants.js";
 import { normalizeTicker, isValidTicker } from "../../../shared/validation.js";
 import { handleApiError, sendBadRequest } from "../utils/errorHandler.js";
 

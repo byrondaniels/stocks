@@ -58,7 +58,7 @@ beforeAll(async () => {
               profitLoss: parseFloat(profitLoss.toFixed(2)),
               profitLossPercent: parseFloat(profitLossPercent.toFixed(2)),
             };
-          } catch (error) {
+          } catch {
             return {
               ticker: item.ticker,
               shares: item.shares,
@@ -109,7 +109,7 @@ beforeAll(async () => {
           profitLoss: parseFloat(profitLoss.toFixed(2)),
           profitLossPercent: parseFloat(profitLossPercent.toFixed(2)),
         });
-      } catch (error) {
+      } catch {
         res.json({
           ticker: portfolioItem.ticker,
           shares: portfolioItem.shares,

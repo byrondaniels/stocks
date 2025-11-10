@@ -1,8 +1,5 @@
 import {
-  getCurrentPrice,
   getHistoricalPrices,
-  type StockPrice,
-  type HistoricalPrices
 } from './stockData';
 import { StockMetrics } from '../db/models';
 import { Portfolio } from '../db/models';

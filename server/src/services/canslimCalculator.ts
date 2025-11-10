@@ -9,7 +9,6 @@ import {
 import {
   analyzeCANSLIMWithGemini,
   type CANSLIMMetrics,
-  type CANSLIMAnalysis
 } from './gemini';
 import { StockMetrics } from '../db/models';
 

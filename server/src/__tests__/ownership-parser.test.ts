@@ -496,8 +496,8 @@ describe('parseOwnershipXml', () => {
       expect(tx.formType).toBe('4');
       expect(tx.transactionCode).toBe('S');
       expect(tx.type).toBe('sell');
-      expect(tx.shares).toBe(500);
-      expect(tx.price).toBe(245.89);
+      expect(tx.shares).toBe(1665);
+      expect(tx.price).toBe(247.04);
       expect(tx.securityTitle).toBe('Common Stock');
     });
 
@@ -507,8 +507,8 @@ describe('parseOwnershipXml', () => {
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.transactionCode).toBe('S');
       expect(tx.type).toBe('sell');
-      expect(tx.shares).toBe(1665);
-      expect(tx.price).toBe(247.04);
+      expect(tx.shares).toBe(1534);
+      expect(tx.price).toBe(247.82);
       expect(tx.securityTitle).toBe('Common Stock');
     });
 
@@ -518,21 +518,13 @@ describe('parseOwnershipXml', () => {
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.transactionCode).toBe('S');
       expect(tx.type).toBe('sell');
-      expect(tx.shares).toBe(1534);
-      expect(tx.price).toBe(247.82);
-      expect(tx.securityTitle).toBe('Common Stock');
-    });
-
-    it('should parse transaction 6 (S code - Sale)', () => {
-      const tx = transactions[5];
-      expect(tx.date).toBe('2025-10-16');
-      expect(tx.insider).toBe('Parekh Kevan');
-      expect(tx.transactionCode).toBe('S');
-      expect(tx.type).toBe('sell');
       expect(tx.shares).toBe(500);
       expect(tx.price).toBe(248.73);
       expect(tx.securityTitle).toBe('Common Stock');
     });
+
+    // Transaction 6 is now a derivative transaction (first RSU)
+    // The non-derivative M transaction was filtered out
 
     it('should correctly identify all sales transactions', () => {
       const salesTransactions = transactions.filter(tx => tx.type === 'sell');
@@ -566,7 +558,7 @@ describe('parseOwnershipXml', () => {
     });
 
     it('should parse derivative transaction 2 (RSU exercise)', () => {
-      const tx = transactions[7]; // Second derivative transaction
+      const tx = transactions[6]; // Second derivative transaction
       expect(tx.date).toBe('2025-10-15');
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.transactionCode).toBe('M');
@@ -577,7 +569,7 @@ describe('parseOwnershipXml', () => {
     });
 
     it('should parse derivative transaction 3 (RSU exercise)', () => {
-      const tx = transactions[8]; // Third derivative transaction
+      const tx = transactions[7]; // Third derivative transaction
       expect(tx.date).toBe('2025-10-15');
       expect(tx.insider).toBe('Parekh Kevan');
       expect(tx.transactionCode).toBe('M');
@@ -616,20 +608,19 @@ describe('parseOwnershipXml', () => {
     });
 
     it('should correctly parse transaction dates', () => {
-      // First 2 transactions on Oct 15
+      // First transaction (F code) on Oct 15
       expect(transactions[0].date).toBe('2025-10-15');
-      expect(transactions[1].date).toBe('2025-10-15');
 
-      // Next 4 non-derivative transactions on Oct 16
+      // Next 4 non-derivative transactions (S code) on Oct 16
+      expect(transactions[1].date).toBe('2025-10-16');
       expect(transactions[2].date).toBe('2025-10-16');
       expect(transactions[3].date).toBe('2025-10-16');
       expect(transactions[4].date).toBe('2025-10-16');
-      expect(transactions[5].date).toBe('2025-10-16');
 
       // Derivative transactions on Oct 15
+      expect(transactions[5].date).toBe('2025-10-15');
       expect(transactions[6].date).toBe('2025-10-15');
       expect(transactions[7].date).toBe('2025-10-15');
-      expect(transactions[8].date).toBe('2025-10-15');
     });
 
     it('should use formType from filing metadata', () => {

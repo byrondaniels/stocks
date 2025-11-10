@@ -13,9 +13,7 @@ import {
   fetchAndStoreHistoricalPrices,
   calculateMovingAverage,
   getPriceHistorySummary,
-  calculate50DMA,
 } from "../services/priceHistory.js";
-import { getInsiderTransactions } from "../services/sec/insider-service.js";
 import { enrichStockArray } from "../services/enrichment.service.js";
 import {
   HTTP_STATUS,
@@ -82,7 +80,7 @@ router.get("/:ticker", async (req: Request, res: ExpressResponse) => {
         addedDate: watchlistItem.addedDate,
         currentPrice,
       });
-    } catch (error) {
+    } catch {
       // If we can't get current price, return without it
       res.json({
         ticker: watchlistItem.ticker,

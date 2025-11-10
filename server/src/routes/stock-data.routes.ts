@@ -11,7 +11,6 @@ import {
   getHistoricalPrices,
   getRateLimitStatus,
   clearAllCaches,
-  type ApiError,
 } from "../services/stockData.js";
 import {
   HTTP_STATUS,
