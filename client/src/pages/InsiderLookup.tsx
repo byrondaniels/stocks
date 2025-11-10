@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { formatCurrency, formatShares } from "../utils/formatters";
-import { TICKER_REGEX, normalizeTicker } from "../utils/validation";
+import { TICKER_REGEX, normalizeTicker } from "../../../shared/validation";
 import { TICKER_MAX_LENGTH } from "../constants";
 
 type InsiderResponse = {

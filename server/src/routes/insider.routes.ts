@@ -6,7 +6,7 @@
 import { Request, Response as ExpressResponse, Router } from "express";
 import { getInsiderTransactions } from "../services/sec/index.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../constants.js";
-import { normalizeTicker, isValidTicker } from "../utils/validation.js";
+import { normalizeTicker, isValidTicker } from "../../../shared/validation.js";
 import { sendBadRequest, sendNotFound } from "../utils/errorHandler.js";
 
 const router = Router();

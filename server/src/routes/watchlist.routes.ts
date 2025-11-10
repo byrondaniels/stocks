@@ -16,6 +16,7 @@ import {
   calculate50DMA,
 } from "../services/priceHistory.js";
 import { getInsiderTransactions } from "../services/sec/insider-service.js";
+import { enrichStockArray } from "../services/enrichment.service.js";
 import {
   HTTP_STATUS,
   ERROR_MESSAGES,
@@ -24,7 +25,7 @@ import {
 import {
   normalizeTicker,
   isValidTicker,
-} from "../utils/validation.js";
+} from "../../../shared/validation.js";
 import { sendBadRequest, sendNotFound, sendInternalError } from "../utils/errorHandler.js";
 
 const router = Router();
@@ -38,46 +39,7 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
     const watchlistStocks = await Watchlist.find().sort({ addedDate: -1 }).lean();
 
     // Enrich each watchlist item with current price, 50DMA stats, and insider activity
-    const enrichedWatchlist = await Promise.all(
-      watchlistStocks.map(async (stock: any) => {
-        try {
-          // Get current price
-          const priceData = await getCurrentPrice(stock.ticker);
-          const currentPrice = priceData.price;
-
-          // Get 50DMA stats and insider activity in parallel
-          const [dmaStats, insiderData] = await Promise.all([
-            calculate50DMA(stock.ticker),
-            getInsiderTransactions(stock.ticker).catch(() => null), // Don't fail if insider data unavailable
-          ]);
-
-          return {
-            ...stock,
-            currentPrice,
-            movingAverage50: dmaStats.movingAverage50,
-            percentageDifference: dmaStats.percentageDifference,
-            priceCount: dmaStats.priceCount,
-            latestDate: dmaStats.latestDate,
-            insiderActivity: insiderData?.summary || null,
-          };
-        } catch (error) {
-          // If we can't get current price, return with DMA data
-          const [dmaStats, insiderData] = await Promise.all([
-            calculate50DMA(stock.ticker),
-            getInsiderTransactions(stock.ticker).catch(() => null),
-          ]);
-          return {
-            ...stock,
-            currentPrice: dmaStats.currentPrice,
-            movingAverage50: dmaStats.movingAverage50,
-            percentageDifference: dmaStats.percentageDifference,
-            priceCount: dmaStats.priceCount,
-            latestDate: dmaStats.latestDate,
-            insiderActivity: insiderData?.summary || null,
-          };
-        }
-      })
-    );
+    const enrichedWatchlist = await enrichStockArray(watchlistStocks as any);
 
     res.json({
       success: true,

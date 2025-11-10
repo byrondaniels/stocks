@@ -20,7 +20,7 @@ import {
   HISTORICAL_DAYS_MIN,
   HISTORICAL_DAYS_MAX,
 } from "../constants.js";
-import { normalizeTicker, isValidTicker } from "../utils/validation.js";
+import { normalizeTicker, isValidTicker } from "../../../shared/validation.js";
 import { handleApiError, sendBadRequest } from "../utils/errorHandler.js";
 import { getCompanyName } from "../services/sec/ticker-map.js";
 
