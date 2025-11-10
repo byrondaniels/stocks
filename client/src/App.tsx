@@ -6,6 +6,7 @@
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Portfolio } from './pages/Portfolio';
+import { Watchlist } from './pages/Watchlist';
 import { InsiderLookup } from './pages/InsiderLookup';
 import { StockDetail } from './pages/StockDetail';
 import './App.css';
@@ -23,6 +24,12 @@ function Navigation() {
             className={location.pathname === '/portfolio' || location.pathname === '/' ? 'active' : ''}
           >
             Portfolio
+          </Link>
+          <Link
+            to="/watchlist"
+            className={location.pathname === '/watchlist' ? 'active' : ''}
+          >
+            Watchlist
           </Link>
           <Link
             to="/insiders"
@@ -45,6 +52,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Portfolio />} />
             <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/stock/:ticker" element={<StockDetail />} />
             <Route path="/insiders" element={<InsiderLookup />} />
             <Route path="/insider/:ticker" element={<InsiderLookup />} />

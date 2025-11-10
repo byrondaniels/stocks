@@ -168,6 +168,30 @@
   font-weight: 600;
 }
 
+.stock-card-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #fef3c7;
+  border-radius: 6px;
+  border-left: 3px solid #f59e0b;
+}
+
+.notes-label {
+  font-size: 0.75rem;
+  color: #92400e;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.notes-text {
+  color: #78350f;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .stock-card {
