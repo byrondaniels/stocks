@@ -43,6 +43,7 @@ export const ERROR_MESSAGES = {
   STOCK_NOT_FOUND: "Stock not found in portfolio",
   PORTFOLIO_NOT_FOUND: "Portfolio not found",
   CANSLIM_SCORE_ERROR: "Unable to calculate CANSLIM score. Please try again later.",
+  RS_RATING_ERROR: "Unable to calculate RS rating. Please try again later.",
   STOCK_DATA_ERROR: "Unable to fetch stock data. Please try again later.",
   OWNERSHIP_DATA_ERROR: "Unable to fetch ownership data. Please try again later.",
   HISTORICAL_DATA_ERROR: "Unable to fetch historical data. Please try again later.",
@@ -63,6 +64,12 @@ export const HISTORICAL_DAYS_MAX = 365;
 // ============================================================================
 
 export const CANSLIM_CACHE_HOURS = 24;
+
+// ============================================================================
+// RS Rating Constants
+// ============================================================================
+
+export const RS_CACHE_HOURS = 24;
 
 // ============================================================================
 // Formatting Constants

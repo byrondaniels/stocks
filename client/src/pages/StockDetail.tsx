@@ -4,6 +4,7 @@ import { PriceLineChart } from '../components/PriceLineChart';
 import { InsiderData, OwnershipData, MovingAverageData, CANSLIMScore, PriceHistoryPoint } from '../types';
 import OwnershipPieChart from '../components/OwnershipPieChart';
 import { CANSLIMScore as CANSLIMScoreComponent } from '../components/CANSLIMScore';
+import { RSIndicator } from '../components/RSIndicator';
 import { formatCurrency } from '../utils/formatters';
 import { HISTORICAL_DAYS_DEFAULT } from '../constants';
 import './StockDetail.css';
@@ -462,6 +463,13 @@ export function StockDetail() {
         <h2>CANSLIM Analysis</h2>
         <div className="canslim-section">
           <CANSLIMScoreComponent ticker={stock.ticker} />
+        </div>
+
+        {/* RS Rating Section */}
+        <div className="section-divider"></div>
+        <h2>Relative Strength</h2>
+        <div className="rs-section">
+          <RSIndicator ticker={stock.ticker} />
         </div>
 
         {/* 50-Day Moving Average Section */}
