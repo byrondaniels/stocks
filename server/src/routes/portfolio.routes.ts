@@ -16,6 +16,7 @@ import {
   calculate50DMA,
 } from "../services/priceHistory.js";
 import { getInsiderTransactions } from "../services/sec/insider-service.js";
+import { enrichPortfolioArray } from "../services/enrichment.service.js";
 import {
   HTTP_STATUS,
   ERROR_MESSAGES,
@@ -25,7 +26,7 @@ import {
   normalizeTicker,
   isValidTicker,
   isPositiveNumber,
-} from "../utils/validation.js";
+} from "../../../shared/validation.js";
 import { calculateProfitLoss } from "../utils/calculations.js";
 import { sendBadRequest, sendNotFound, sendInternalError } from "../utils/errorHandler.js";
 
@@ -40,55 +41,7 @@ router.get("/", async (_req: Request, res: ExpressResponse) => {
     const portfolioStocks = await Portfolio.find().sort({ createdAt: -1 }).lean();
 
     // Enrich each portfolio item with current price, profit/loss, 50DMA stats, and insider activity
-    const enrichedPortfolio = await Promise.all(
-      portfolioStocks.map(async (stock: any) => {
-        try {
-          // Get current price for profit/loss calculation
-          const priceData = await getCurrentPrice(stock.ticker);
-          const currentPrice = priceData.price;
-
-          // Calculate profit/loss
-          const { profitLoss, profitLossPercent } = calculateProfitLoss(
-            currentPrice,
-            stock.purchasePrice,
-            stock.shares
-          );
-
-          // Get 50DMA stats and insider activity in parallel
-          const [dmaStats, insiderData] = await Promise.all([
-            calculate50DMA(stock.ticker),
-            getInsiderTransactions(stock.ticker).catch(() => null), // Don't fail if insider data unavailable
-          ]);
-
-          return {
-            ...stock,
-            currentPrice,
-            profitLoss,
-            profitLossPercent,
-            movingAverage50: dmaStats.movingAverage50,
-            percentageDifference: dmaStats.percentageDifference,
-            priceCount: dmaStats.priceCount,
-            latestDate: dmaStats.latestDate,
-            insiderActivity: insiderData?.summary || null,
-          };
-        } catch (error) {
-          // If we can't get current price or DMA, return basic data
-          const [dmaStats, insiderData] = await Promise.all([
-            calculate50DMA(stock.ticker),
-            getInsiderTransactions(stock.ticker).catch(() => null),
-          ]);
-          return {
-            ...stock,
-            currentPrice: dmaStats.currentPrice,
-            movingAverage50: dmaStats.movingAverage50,
-            percentageDifference: dmaStats.percentageDifference,
-            priceCount: dmaStats.priceCount,
-            latestDate: dmaStats.latestDate,
-            insiderActivity: insiderData?.summary || null,
-          };
-        }
-      })
-    );
+    const enrichedPortfolio = await enrichPortfolioArray(portfolioStocks as any);
 
     res.json({
       success: true,

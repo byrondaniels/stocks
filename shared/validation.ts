@@ -1,5 +1,6 @@
 /**
  * Shared validation utilities
+ * Used by both client and server for consistent validation
  */
 
 // Ticker validation regex: 1-5 uppercase letters with optional .suffix
@@ -21,6 +22,15 @@ export function normalizeTicker(ticker: string): string {
  */
 export function isValidTicker(ticker: string): boolean {
   return TICKER_REGEX.test(ticker);
+}
+
+/**
+ * Validates if a number is positive
+ * @param value - The value to validate
+ * @returns True if the value is a positive number, false otherwise
+ */
+export function isPositiveNumber(value: unknown): boolean {
+  return typeof value === "number" && value > 0;
 }
 
 /**

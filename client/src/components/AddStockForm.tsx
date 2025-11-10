@@ -1,7 +1,8 @@
 import { FormEvent, useState, useEffect, useRef } from 'react';
 import { AddStockFormData, RecentlySearchedStock } from '../types';
-import { TICKER_REGEX, normalizeTicker } from '../utils/validation';
+import { normalizeTicker } from '../../../shared/validation';
 import { getRecentSearches } from '../utils/recentSearches';
+import { useTickerValidation } from '../hooks/useTickerValidation';
 
 interface AddStockFormProps {
   onAdd: (data: AddStockFormData) => Promise<void>;
@@ -20,6 +21,7 @@ export function AddStockForm({ onAdd, loading }: AddStockFormProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { validateTicker } = useTickerValidation();
 
   // Load recent searches on mount
   useEffect(() => {
@@ -48,12 +50,10 @@ export function AddStockForm({ onAdd, loading }: AddStockFormProps) {
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof AddStockFormData, string>> = {};
 
-    // Validate ticker
-    const trimmedTicker = normalizeTicker(formData.ticker);
-    if (!trimmedTicker) {
-      newErrors.ticker = 'Ticker is required';
-    } else if (!TICKER_REGEX.test(trimmedTicker)) {
-      newErrors.ticker = 'Invalid ticker format (e.g., AAPL or BRK.B)';
+    // Validate ticker using the hook
+    const tickerError = validateTicker(formData.ticker);
+    if (tickerError) {
+      newErrors.ticker = tickerError;
     }
 
     // Validate shares

@@ -10,7 +10,7 @@ import {
 } from "../services/canslimCalculator.js";
 import { type ApiError } from "../services/stockData.js";
 import { HTTP_STATUS, ERROR_MESSAGES, CANSLIM_CACHE_HOURS } from "../constants.js";
-import { normalizeTicker, isValidTicker } from "../utils/validation.js";
+import { normalizeTicker, isValidTicker } from "../../../shared/validation.js";
 import { handleApiError, sendBadRequest } from "../utils/errorHandler.js";
 
 const router = Router();

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { AddWatchlistFormData } from '../types';
-import { TICKER_REGEX, normalizeTicker } from '../utils/validation';
+import { normalizeTicker } from '../../../shared/validation';
+import { useTickerValidation } from '../hooks/useTickerValidation';
 
 interface AddWatchlistFormProps {
   onAdd: (data: AddWatchlistFormData) => Promise<void>;
@@ -13,16 +14,15 @@ export function AddWatchlistForm({ onAdd, loading }: AddWatchlistFormProps) {
     notes: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof AddWatchlistFormData, string>>>({});
+  const { validateTicker } = useTickerValidation();
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof AddWatchlistFormData, string>> = {};
 
-    // Validate ticker
-    const trimmedTicker = normalizeTicker(formData.ticker);
-    if (!trimmedTicker) {
-      newErrors.ticker = 'Ticker is required';
-    } else if (!TICKER_REGEX.test(trimmedTicker)) {
-      newErrors.ticker = 'Invalid ticker format (e.g., AAPL or BRK.B)';
+    // Validate ticker using the hook
+    const tickerError = validateTicker(formData.ticker);
+    if (tickerError) {
+      newErrors.ticker = tickerError;
     }
 
     setErrors(newErrors);
