@@ -14,6 +14,7 @@ import portfolioRoutes from "./routes/portfolio.routes.js";
 import watchlistRoutes from "./routes/watchlist.routes.js";
 import stockDataRoutes from "./routes/stock-data.routes.js";
 import canslimRoutes from "./routes/canslim.routes.js";
+import rsRoutes from "./routes/rs.routes.js";
 
 const PORT = process.env.PORT || 3001;
 
@@ -29,6 +30,7 @@ app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/stock", stockDataRoutes);
 app.use("/api/canslim", canslimRoutes);
+app.use("/api/rs", rsRoutes);
 
 // Connect to MongoDB and start server
 connectToDatabase()
@@ -41,6 +43,7 @@ connectToDatabase()
       console.log(`  - /api/watchlist      - Watchlist management`);
       console.log(`  - /api/stock          - Stock data & prices`);
       console.log(`  - /api/canslim        - CANSLIM scoring`);
+      console.log(`  - /api/rs             - RS Rating (Relative Strength)`);
     });
   })
   .catch((error) => {

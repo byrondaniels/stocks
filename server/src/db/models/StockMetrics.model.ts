@@ -8,7 +8,7 @@ import { StockMetricsSchema } from "../schemas.js";
 
 export interface IStockMetrics extends Document {
   ticker: string;
-  dataType: "ownership" | "canslim" | "financials";
+  dataType: "ownership" | "canslim" | "financials" | "rs";
   data: Record<string, any>;
   fetchedAt: Date;
 }
