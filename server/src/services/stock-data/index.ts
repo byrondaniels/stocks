@@ -32,12 +32,13 @@ import { getRateLimitStatus as getRateLimitStatusInternal } from "./rate-limiter
 
 import { fetchAlphaVantageQuote, fetchAlphaVantageHistorical } from "./alpha-vantage.js";
 import { fetchFMPQuote, fetchFMPProfile } from "./fmp.js";
+import { fetchYahooQuote, fetchYahooHistorical } from "./yahoo-finance.js";
 
 import type { StockPrice, FinancialMetrics, HistoricalPrices, CompanyProfile, VolumeAnalysis } from "./types.js";
 
 /**
  * Get current stock price for a ticker
- * Uses Alpha Vantage as primary source, FMP as fallback
+ * Uses Alpha Vantage as primary source, Yahoo Finance as fallback
  * Cached for 1 hour
  */
 export async function getCurrentPrice(ticker: string): Promise<StockPrice> {
@@ -58,16 +59,16 @@ export async function getCurrentPrice(ticker: string): Promise<StockPrice> {
     setCache(priceCache, normalizedTicker, price);
     return price;
   } catch (error) {
-    console.warn('[StockData] Alpha Vantage failed, trying FMP:', error);
+    console.warn('[StockData] Alpha Vantage failed, trying Yahoo Finance:', error);
 
-    // Fallback to FMP
+    // Fallback to Yahoo Finance
     try {
-      const price = await fetchFMPQuote(normalizedTicker);
+      const price = await fetchYahooQuote(normalizedTicker);
       setCache(priceCache, normalizedTicker, price);
       return price;
-    } catch (fmpError) {
-      console.error('[StockData] All price sources failed:', fmpError);
-      throw fmpError;
+    } catch (yahooError) {
+      console.error('[StockData] All price sources failed:', yahooError);
+      throw yahooError;
     }
   }
 }
@@ -114,7 +115,7 @@ export async function getFinancialMetrics(ticker: string): Promise<FinancialMetr
 
 /**
  * Get historical daily OHLCV prices
- * Uses Alpha Vantage as primary source
+ * Uses Alpha Vantage as primary source, Yahoo Finance as fallback
  * Cached for 1 hour
  */
 export async function getHistoricalPrices(
@@ -137,9 +138,24 @@ export async function getHistoricalPrices(
     `[StockData] Fetching historical prices for ${normalizedTicker} (${days} days)`
   );
 
-  const historical = await fetchAlphaVantageHistorical(normalizedTicker, days);
-  setCache(historicalCache, cacheKey, historical);
-  return historical;
+  // Try Alpha Vantage first
+  try {
+    const historical = await fetchAlphaVantageHistorical(normalizedTicker, days);
+    setCache(historicalCache, cacheKey, historical);
+    return historical;
+  } catch (error) {
+    console.warn('[StockData] Alpha Vantage historical failed, trying Yahoo Finance:', error);
+
+    // Fallback to Yahoo Finance
+    try {
+      const historical = await fetchYahooHistorical(normalizedTicker, days);
+      setCache(historicalCache, cacheKey, historical);
+      return historical;
+    } catch (yahooError) {
+      console.error('[StockData] All historical sources failed:', yahooError);
+      throw yahooError;
+    }
+  }
 }
 
 /**
