@@ -234,7 +234,6 @@ Open your browser and navigate to:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/stock/price?ticker=AAPL` | Get current stock price |
-| GET | `/api/stock/ownership?ticker=AAPL` | Get ownership breakdown |
 | GET | `/api/stock/financials?ticker=AAPL` | Get financial metrics |
 | GET | `/api/stock/historical?ticker=AAPL&days=50` | Get historical prices |
 | GET | `/api/stock/rate-limits` | Check API rate limit status |

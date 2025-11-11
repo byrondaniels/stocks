@@ -12,16 +12,6 @@ export type StockPrice = {
   source: 'alphavantage' | 'fmp' | 'yahoo';
 };
 
-export type OwnershipData = {
-  ticker: string;
-  insiderOwnership: number; // percentage
-  institutionalOwnership: number; // percentage
-  publicOwnership: number; // percentage
-  floatShares: number;
-  sharesOutstanding: number;
-  source: 'fmp' | 'sec' | 'mock';
-  timestamp: string;
-};
 
 export type FinancialMetrics = {
   ticker: string;

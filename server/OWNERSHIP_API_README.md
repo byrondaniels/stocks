@@ -280,7 +280,6 @@ Companies without recent SEC filings may return null or have limited data.
 ## Related Endpoints
 
 - `/api/insiders?ticker=AAPL` - Get insider transaction details
-- `/api/stock/ownership?ticker=AAPL` - Simple ownership percentages (requires FMP subscription)
 - `/api/stock/company-name?ticker=AAPL` - Get company name for a ticker
 
 ## References

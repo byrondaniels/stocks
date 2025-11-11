@@ -3,7 +3,7 @@
  * Provides ownership, financials, and metrics data
  */
 
-import type { StockPrice, OwnershipData, FinancialMetrics, CompanyProfile, ApiError } from "./types.js";
+import type { StockPrice, FinancialMetrics, CompanyProfile, ApiError } from "./types.js";
 import { FMP_KEY, FMP_BASE, FMP_DAILY_LIMIT } from "./config.js";
 import {
   fmpRateLimit,
@@ -63,98 +63,6 @@ export async function fetchFMPQuote(ticker: string): Promise<StockPrice> {
   }
 }
 
-export async function fetchFMPOwnership(ticker: string): Promise<OwnershipData> {
-  if (!FMP_KEY) {
-    throw new Error('FMP API key not configured');
-  }
-
-  if (!canMakeRequest(fmpRateLimit, FMP_DAILY_LIMIT)) {
-    const error: ApiError = {
-      message: 'FMP daily rate limit exceeded',
-      code: 'RATE_LIMIT',
-      retryAfter: 86400,
-    };
-    throw error;
-  }
-
-  await enforceInterval(fmpRateLimit);
-
-  // Use new v4 endpoints
-  const sharesFloatUrl = `https://financialmodelingprep.com/api/v4/shares_float?symbol=${ticker}&apikey=${FMP_KEY}`;
-  const institutionalUrl = `https://financialmodelingprep.com/api/v4/institutional-ownership/symbol-ownership?symbol=${ticker}&apikey=${FMP_KEY}`;
-
-  try {
-    // Fetch shares float data for shares outstanding
-    const sharesResponse = await fetchWithRetry(sharesFloatUrl);
-    recordRequest(fmpRateLimit);
-
-    if (!sharesResponse.ok) {
-      throw new Error(`HTTP ${sharesResponse.status}: ${sharesResponse.statusText}`);
-    }
-
-    const sharesData = await sharesResponse.json();
-
-    if (!sharesData || sharesData.length === 0) {
-      throw new Error('Ticker not found');
-    }
-
-    const sharesInfo = sharesData[0];
-    const sharesOutstanding = sharesInfo.outstandingShares || sharesInfo.sharesOutstanding || 0;
-
-    // Small delay between requests
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Fetch institutional ownership
-    let institutionalOwnershipPercent = 0;
-
-    try {
-      if (canMakeRequest(fmpRateLimit, FMP_DAILY_LIMIT)) {
-        const instResponse = await fetchWithRetry(institutionalUrl);
-        recordRequest(fmpRateLimit);
-
-        if (instResponse.ok) {
-          const instData = await instResponse.json();
-
-          if (instData && instData.length > 0) {
-            // New v4 API response format: sum up institutional holdings
-            const totalInstitutionalShares = instData.reduce(
-              (sum: number, holder: any) => sum + (holder.sharesNumber || holder.shares || 0),
-              0
-            );
-
-            institutionalOwnershipPercent = sharesOutstanding > 0
-              ? (totalInstitutionalShares / sharesOutstanding) * 100
-              : 0;
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('[FMP] Could not fetch institutional ownership:', error);
-      // Continue with default value of 0
-    }
-
-    // Estimate insider ownership (typically 5-20% for public companies)
-    const insiderOwnershipPercent = 10; // Default estimate
-
-    const ownershipData: OwnershipData = {
-      ticker: ticker.toUpperCase(),
-      insiderOwnership: insiderOwnershipPercent,
-      institutionalOwnership: Math.min(institutionalOwnershipPercent, 100),
-      publicOwnership: Math.max(
-        0,
-        100 - insiderOwnershipPercent - institutionalOwnershipPercent
-      ),
-      floatShares: sharesOutstanding * 0.9, // Estimate: 90% of shares are float
-      sharesOutstanding: sharesOutstanding,
-      source: 'fmp',
-      timestamp: new Date().toISOString(),
-    };
-
-    return ownershipData;
-  } catch (error) {
-    return handleApiError(error, 'FMP');
-  }
-}
 
 export async function fetchFMPFinancials(ticker: string): Promise<FinancialMetrics> {
   if (!FMP_KEY) {
