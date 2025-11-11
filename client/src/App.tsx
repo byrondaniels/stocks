@@ -9,6 +9,7 @@ import { Portfolio } from './pages/Portfolio';
 import { Watchlist } from './pages/Watchlist';
 import { StockDetail } from './pages/StockDetail';
 import { Explore } from './pages/Explore';
+import { MarketHealth } from './pages/MarketHealth';
 import { HeaderStockSearch } from './components/HeaderStockSearch';
 import './App.css';
 
@@ -37,6 +38,12 @@ function Navigation() {
           >
             Watchlist
           </Link>
+          <Link
+            to="/market-health"
+            className={location.pathname === '/market-health' ? 'active' : ''}
+          >
+            Market Health
+          </Link>
         </div>
       </div>
     </nav>
@@ -56,6 +63,7 @@ function App() {
             <Route path="/stock/:ticker" element={<StockDetail />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/explore/:ticker" element={<Explore />} />
+            <Route path="/market-health" element={<MarketHealth />} />
           </Routes>
         </main>
         <Toaster

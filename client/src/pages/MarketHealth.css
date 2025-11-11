@@ -1,0 +1,370 @@
+.market-health-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: #333;
+}
+
+.refresh-button {
+  padding: 0.5rem 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.refresh-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.loading-state {
+  padding: 3rem;
+  text-align: center;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.alert {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+
+.alert.error {
+  background-color: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 1.5rem;
+}
+
+.health-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.card-header h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.4rem;
+  color: #333;
+}
+
+.card-header .subtitle {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.big-number {
+  font-size: 3.5rem;
+  font-weight: bold;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.big-number.vix-green,
+.big-number.fg-green {
+  color: #28a745;
+}
+
+.big-number.vix-yellow {
+  color: #ffc107;
+}
+
+.big-number.vix-orange,
+.big-number.fg-orange {
+  color: #ff8c00;
+}
+
+.big-number.vix-red,
+.big-number.fg-red {
+  color: #dc3545;
+}
+
+.big-number.fg-lightgreen {
+  color: #90ee90;
+}
+
+.big-number.fg-gray {
+  color: #6c757d;
+}
+
+.metric-details {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.metric-details .positive {
+  color: #28a745;
+}
+
+.metric-details .negative {
+  color: #dc3545;
+}
+
+.level-badge {
+  text-align: center;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.level-badge.level-green {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.level-badge.level-yellow {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.level-badge.level-orange {
+  background-color: #ffe5d0;
+  color: #8b4000;
+}
+
+.level-badge.level-red {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.level-badge.level-lightgreen {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.level-badge.level-gray {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.interpretation {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  border-left: 4px solid #007bff;
+  margin-top: 0.5rem;
+}
+
+.interpretation p {
+  margin: 0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.last-updated {
+  font-size: 0.8rem;
+  color: #999;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* Fear & Greed Gauge */
+.fear-greed-gauge {
+  margin: 1rem 0;
+}
+
+.gauge-bar {
+  width: 100%;
+  height: 30px;
+  background-color: #e9ecef;
+  border-radius: 15px;
+  overflow: hidden;
+  position: relative;
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 15px;
+  transition: width 0.5s ease, background-color 0.5s ease;
+}
+
+.gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Market Breadth */
+.breadth-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.breadth-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.breadth-row.major {
+  border-top: 2px solid #e9ecef;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.breadth-row .label {
+  color: #666;
+  font-weight: 500;
+}
+
+.breadth-row .value {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.breadth-row .value.positive {
+  color: #28a745;
+}
+
+.breadth-row .value.negative {
+  color: #dc3545;
+}
+
+.breadth-bar {
+  margin: 1rem 0;
+}
+
+.breadth-visual {
+  width: 100%;
+  height: 40px;
+  background-color: #dc3545;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+}
+
+.breadth-visual .advances {
+  background-color: #28a745;
+  transition: width 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+
+/* Major Indices */
+.index-row {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.index-name {
+  font-weight: bold;
+  color: #333;
+}
+
+.index-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  text-align: right;
+}
+
+.index-change {
+  text-align: right;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.index-change.positive {
+  color: #28a745;
+}
+
+.index-change.negative {
+  color: #dc3545;
+}
+
+.index-change .change-value {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: normal;
+  margin-top: 0.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .health-grid {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .market-health-page {
+    padding: 1rem;
+  }
+
+  .health-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .big-number {
+    font-size: 2.5rem;
+  }
+
+  .index-row {
+    grid-template-columns: 100px 1fr auto;
+    gap: 0.5rem;
+  }
+}
