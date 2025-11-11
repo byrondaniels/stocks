@@ -79,6 +79,16 @@
   background: #dc2626;
 }
 
+/* Sector Info */
+.rs-sector-info {
+  text-align: center;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 16px;
+}
+
 /* RS Content */
 .rs-content {
   display: flex;
@@ -86,17 +96,32 @@
   gap: 32px;
 }
 
+/* RS Gauges Container - holds both sector and stock gauges */
+.rs-gauges-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
 /* RS Gauge Section */
 .rs-gauge-section {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 40px;
+  gap: 16px;
   padding: 24px;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.rs-gauge-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  text-align: center;
 }
 
 .rs-gauge {
@@ -228,6 +253,26 @@
   color: rgba(255, 255, 255, 1);
 }
 
+.rs-explanation ul {
+  margin: 12px 0;
+  padding-left: 24px;
+  line-height: 1.7;
+}
+
+.rs-explanation li {
+  margin: 8px 0;
+  font-size: 15px;
+  opacity: 0.95;
+}
+
+.rs-interpretation {
+  font-size: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .rs-container {
@@ -238,9 +283,12 @@
     font-size: 22px;
   }
 
+  .rs-gauges-container {
+    grid-template-columns: 1fr;
+  }
+
   .rs-gauge-section {
-    flex-direction: column;
-    gap: 24px;
+    gap: 16px;
   }
 
   .rs-gauge {

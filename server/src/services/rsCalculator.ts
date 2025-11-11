@@ -2,244 +2,228 @@ import {
   getHistoricalPrices,
 } from './stockData';
 import { StockMetrics } from '../db/models';
-import { Portfolio } from '../db/models';
 
 /**
- * IBD-style Relative Strength (RS) Rating
- * Ranks a stock's price performance against all other stocks on a scale of 1-99
+ * Relative Strength Rating - New Methodology
+ * Calculates sector strength and stock strength relative to benchmarks
  */
 export interface RSRating {
   ticker: string;
-  rating: number; // 1-99 (percentile rank)
-  pricePerformance: {
-    month3: number;  // 3-month price change %
-    month6: number;  // 6-month price change %
-    month9: number;  // 9-month price change %
-    month12: number; // 12-month price change %
-    weightedScore: number; // Combined weighted score
-  };
+  sectorRS: number; // 1-99 (Industry ETF vs SPY)
+  stockRS: number;  // 1-99 (Stock vs Industry ETF)
+  sectorETF: string | null; // Which ETF was used, or null if fallback to SPY
   calculatedAt: Date;
 }
 
 /**
- * Calculates IBD-style RS rating for a stock
+ * Stock to Industry ETF mapping - POC with 5 ETFs
+ * Expand this as needed
+ */
+const STOCK_TO_ETF_MAP: Record<string, string> = {
+  // Technology - XLK
+  'AAPL': 'XLK',
+  'MSFT': 'XLK',
+  'NVDA': 'XLK',
+  'GOOGL': 'XLK',
+  'META': 'XLK',
+  'AVGO': 'XLK',
+  'ORCL': 'XLK',
+  'CRM': 'XLK',
+  'ADBE': 'XLK',
+  'CSCO': 'XLK',
+
+  // Financials - XLF
+  'JPM': 'XLF',
+  'BAC': 'XLF',
+  'WFC': 'XLF',
+  'MS': 'XLF',
+  'GS': 'XLF',
+  'BLK': 'XLF',
+  'C': 'XLF',
+  'AXP': 'XLF',
+
+  // Healthcare - XLV
+  'UNH': 'XLV',
+  'JNJ': 'XLV',
+  'LLY': 'XLV',
+  'ABBV': 'XLV',
+  'MRK': 'XLV',
+  'PFE': 'XLV',
+  'TMO': 'XLV',
+  'ABT': 'XLV',
+
+  // Consumer Discretionary - XLY
+  'AMZN': 'XLY',
+  'TSLA': 'XLY',
+  'HD': 'XLY',
+  'NKE': 'XLY',
+  'MCD': 'XLY',
+  'SBUX': 'XLY',
+  'TGT': 'XLY',
+
+  // Energy - XLE
+  'XOM': 'XLE',
+  'CVX': 'XLE',
+  'COP': 'XLE',
+  'SLB': 'XLE',
+  'EOG': 'XLE',
+  'MPC': 'XLE',
+};
+
+// Lookback windows (trading days)
+const LOOKBACK_3M = 63;
+const LOOKBACK_6M = 126;
+const LOOKBACK_12M = 252;
+
+// Weights (recent matters more)
+const WEIGHT_3M = 0.4;
+const WEIGHT_6M = 0.3;
+const WEIGHT_12M = 0.3;
+
+/**
+ * Core helper: Calculate weighted excess return vs benchmark
  *
- * The rating compares the stock's price performance to all other stocks in the portfolio
- * using Investor's Business Daily methodology:
- * - 40% weight on most recent 3 months
- * - 20% weight each on months 4-6, 7-9, and 10-12
- * - Returns percentile rank (1-99) where higher is better
+ * @param assetPrices Historical prices for the asset (most recent first)
+ * @param benchmarkPrices Historical prices for the benchmark (most recent first)
+ * @returns RS_raw: weighted excess return across 3-12 months
+ */
+function weightedExcess(
+  assetPrices: Array<{ close: number }>,
+  benchmarkPrices: Array<{ close: number }>
+): number | null {
+  // Need at least 252 days of data
+  if (assetPrices.length < LOOKBACK_12M || benchmarkPrices.length < LOOKBACK_12M) {
+    return null;
+  }
+
+  const assetCurrent = assetPrices[0].close;
+  const benchmarkCurrent = benchmarkPrices[0].close;
+
+  // 3-month returns
+  const asset3m = assetPrices[LOOKBACK_3M - 1]?.close;
+  const benchmark3m = benchmarkPrices[LOOKBACK_3M - 1]?.close;
+  const R3 = asset3m ? (assetCurrent / asset3m - 1) : 0;
+  const B3 = benchmark3m ? (benchmarkCurrent / benchmark3m - 1) : 0;
+  const E3 = R3 - B3;
+
+  // 6-month returns
+  const asset6m = assetPrices[LOOKBACK_6M - 1]?.close;
+  const benchmark6m = benchmarkPrices[LOOKBACK_6M - 1]?.close;
+  const R6 = asset6m ? (assetCurrent / asset6m - 1) : 0;
+  const B6 = benchmark6m ? (benchmarkCurrent / benchmark6m - 1) : 0;
+  const E6 = R6 - B6;
+
+  // 12-month returns
+  const asset12m = assetPrices[LOOKBACK_12M - 1]?.close;
+  const benchmark12m = benchmarkPrices[LOOKBACK_12M - 1]?.close;
+  const R12 = asset12m ? (assetCurrent / asset12m - 1) : 0;
+  const B12 = benchmark12m ? (benchmarkCurrent / benchmark12m - 1) : 0;
+  const E12 = R12 - B12;
+
+  // Weighted excess return
+  const rsRaw = WEIGHT_3M * E3 + WEIGHT_6M * E6 + WEIGHT_12M * E12;
+
+  return rsRaw;
+}
+
+/**
+ * Normalize RS_raw to 1-99 scale
+ * Assumes typical excess range of [-0.5, +0.5] (-50% to +50%)
+ *
+ * @param rsRaw Raw excess return (e.g., -0.2 for -20% underperformance)
+ * @returns Score from 1-99
+ */
+function normalizeToRS(rsRaw: number): number {
+  // Clamp to [-0.5, 0.5]
+  const clamped = Math.max(-0.5, Math.min(0.5, rsRaw));
+
+  // Map to 1-99
+  const score = Math.round(1 + (clamped + 0.5) * 98);
+
+  return Math.max(1, Math.min(99, score));
+}
+
+/**
+ * Calculates new RS rating for a stock
+ *
+ * Sector Strength: Industry ETF vs SPY
+ * Stock Strength: Stock vs Industry ETF (or SPY if no ETF mapping)
  *
  * @param ticker Stock ticker symbol
- * @returns RS rating object with percentile rank and performance breakdown
- *
- * @example
- * const rsRating = await calculateRSRating('AAPL');
- * console.log(`RS Rating: ${rsRating.rating}/99`);              // e.g., 87/99
- * console.log(`3-month: ${rsRating.pricePerformance.month3}%`); // e.g., 15.5%
- * console.log(`12-month: ${rsRating.pricePerformance.month12}%`); // e.g., 28.3%
- *
- * if (rsRating.rating >= 80) {
- *   console.log('Strong relative strength - potential leader');
- * }
+ * @returns RS rating object with sectorRS and stockRS
  */
 export async function calculateRSRating(ticker: string): Promise<RSRating> {
   const normalizedTicker = ticker.toUpperCase();
 
   console.log(`[RS] Calculating RS rating for ${normalizedTicker}`);
 
-  // Step 1: Get price performance for the target stock
-  const targetPerformance = await calculatePricePerformance(normalizedTicker);
-
-  // Step 2: Get all other tickers from portfolio to compare against
-  const allTickers = await getAllPortfolioTickers();
-
-  // Step 3: Calculate performance for all stocks
-  const allPerformances = await Promise.allSettled(
-    allTickers.map(async (t) => ({
-      ticker: t,
-      performance: await calculatePricePerformance(t)
-    }))
-  );
-
-  // Filter out failed calculations
-  const validPerformances = allPerformances
-    .filter((result): result is PromiseFulfilledResult<{ ticker: string; performance: number }> =>
-      result.status === 'fulfilled' && result.value.performance !== null
-    )
-    .map(result => result.value);
-
-  // Step 4: Calculate percentile rank
-  const rating = calculatePercentileRank(targetPerformance, validPerformances.map(p => p.performance));
-
-  // Step 5: Get detailed performance breakdown
-  const performanceBreakdown = await calculatePerformanceBreakdown(normalizedTicker);
-
-  const rsRating: RSRating = {
-    ticker: normalizedTicker,
-    rating,
-    pricePerformance: performanceBreakdown,
-    calculatedAt: new Date()
-  };
-
-  // Step 6: Store in database
-  await storeRSRating(normalizedTicker, rsRating);
-
-  console.log(`[RS] Successfully calculated RS rating for ${normalizedTicker}: ${rating}/99`);
-
-  return rsRating;
-}
-
-/**
- * Calculates the weighted price performance score for a stock
- *
- * IBD methodology applies different weights to different time periods:
- * - Most recent 3 months: 40% weight (emphasizes recent momentum)
- * - Months 4-6: 20% weight
- * - Months 7-9: 20% weight
- * - Months 10-12: 20% weight
- *
- * Requires at least 60 days of historical data to calculate.
- *
- * @param ticker Stock ticker symbol
- * @returns Weighted performance score (percentage)
- *
- * @example
- * const score = await calculatePricePerformance('AAPL');
- * console.log(`Weighted RS Score: ${score.toFixed(2)}%`); // e.g., 22.35%
- */
-async function calculatePricePerformance(ticker: string): Promise<number> {
   try {
-    // Get 12 months of historical data (~252 trading days)
-    const historicalPrices = await getHistoricalPrices(ticker, 252);
+    // Get the industry ETF for this stock (if mapped)
+    const industryETF = STOCK_TO_ETF_MAP[normalizedTicker];
 
-    if (historicalPrices.prices.length < 60) {
-      console.log(`[RS] Insufficient data for ${ticker}`);
-      return 0;
+    // Fetch historical data
+    const [stockData, spyData, etfData] = await Promise.all([
+      getHistoricalPrices(normalizedTicker, LOOKBACK_12M),
+      getHistoricalPrices('SPY', LOOKBACK_12M),
+      industryETF ? getHistoricalPrices(industryETF, LOOKBACK_12M) : null
+    ]);
+
+    let sectorRS: number;
+    let stockRS: number;
+    let usedETF: string | null = null;
+
+    if (industryETF && etfData && etfData.prices.length >= LOOKBACK_12M) {
+      // Case 1: Have ETF mapping, calculate both sector and stock RS
+      usedETF = industryETF;
+
+      // Sector Strength: ETF vs SPY
+      const sectorRaw = weightedExcess(etfData.prices, spyData.prices);
+      sectorRS = sectorRaw !== null ? normalizeToRS(sectorRaw) : 50;
+
+      // Stock Strength: Stock vs ETF
+      const stockRaw = weightedExcess(stockData.prices, etfData.prices);
+      stockRS = stockRaw !== null ? normalizeToRS(stockRaw) : 50;
+
+      console.log(`[RS] ${normalizedTicker} - ETF: ${industryETF}, SectorRS: ${sectorRS}, StockRS: ${stockRS}`);
+    } else {
+      // Case 2: No ETF mapping or insufficient ETF data - compare stock to SPY for both
+      console.log(`[RS] ${normalizedTicker} - No ETF mapping, using SPY fallback`);
+
+      // Both metrics compare to SPY
+      const stockRaw = weightedExcess(stockData.prices, spyData.prices);
+      const rsScore = stockRaw !== null ? normalizeToRS(stockRaw) : 50;
+
+      sectorRS = 50; // Neutral since we don't have sector data
+      stockRS = rsScore; // Stock vs SPY
     }
 
-    const prices = historicalPrices.prices;
-    const currentPrice = prices[0].close; // Most recent price
+    const rsRating: RSRating = {
+      ticker: normalizedTicker,
+      sectorRS,
+      stockRS,
+      sectorETF: usedETF,
+      calculatedAt: new Date()
+    };
 
-    // Calculate price at different time periods (approximately)
-    const price3MonthsAgo = getPriceAtDaysAgo(prices, 63);   // ~3 months
-    const price6MonthsAgo = getPriceAtDaysAgo(prices, 126);  // ~6 months
-    const price9MonthsAgo = getPriceAtDaysAgo(prices, 189);  // ~9 months
-    const price12MonthsAgo = getPriceAtDaysAgo(prices, 252); // ~12 months
+    // Store in database
+    await storeRSRating(normalizedTicker, rsRating);
 
-    // Calculate percentage changes for each period
-    const change3Month = price3MonthsAgo ? ((currentPrice - price3MonthsAgo) / price3MonthsAgo) * 100 : 0;
-    const change6to3Month = price6MonthsAgo && price3MonthsAgo
-      ? ((price3MonthsAgo - price6MonthsAgo) / price6MonthsAgo) * 100 : 0;
-    const change9to6Month = price9MonthsAgo && price6MonthsAgo
-      ? ((price6MonthsAgo - price9MonthsAgo) / price9MonthsAgo) * 100 : 0;
-    const change12to9Month = price12MonthsAgo && price9MonthsAgo
-      ? ((price9MonthsAgo - price12MonthsAgo) / price12MonthsAgo) * 100 : 0;
+    console.log(`[RS] Successfully calculated RS rating for ${normalizedTicker}`);
 
-    // Apply IBD weighting: 40% recent 3 months, 20% each for older quarters
-    const weightedScore = (
-      change3Month * 0.4 +
-      change6to3Month * 0.2 +
-      change9to6Month * 0.2 +
-      change12to9Month * 0.2
-    );
-
-    return weightedScore;
+    return rsRating;
   } catch (error) {
-    console.error(`[RS] Error calculating performance for ${ticker}:`, error);
-    return 0;
-  }
-}
+    console.error(`[RS] Error calculating RS for ${normalizedTicker}:`, error);
 
-/**
- * Calculates detailed performance breakdown for display
- */
-async function calculatePerformanceBreakdown(ticker: string): Promise<{
-  month3: number;
-  month6: number;
-  month9: number;
-  month12: number;
-  weightedScore: number;
-}> {
-  try {
-    const historicalPrices = await getHistoricalPrices(ticker, 252);
+    // Return neutral ratings on error
+    const fallbackRating: RSRating = {
+      ticker: normalizedTicker,
+      sectorRS: 50,
+      stockRS: 50,
+      sectorETF: null,
+      calculatedAt: new Date()
+    };
 
-    if (historicalPrices.prices.length < 60) {
-      return { month3: 0, month6: 0, month9: 0, month12: 0, weightedScore: 0 };
-    }
-
-    const prices = historicalPrices.prices;
-    const currentPrice = prices[0].close;
-
-    const price3MonthsAgo = getPriceAtDaysAgo(prices, 63);
-    const price6MonthsAgo = getPriceAtDaysAgo(prices, 126);
-    const price9MonthsAgo = getPriceAtDaysAgo(prices, 189);
-    const price12MonthsAgo = getPriceAtDaysAgo(prices, 252);
-
-    const month3 = price3MonthsAgo ? ((currentPrice - price3MonthsAgo) / price3MonthsAgo) * 100 : 0;
-    const month6 = price6MonthsAgo ? ((currentPrice - price6MonthsAgo) / price6MonthsAgo) * 100 : 0;
-    const month9 = price9MonthsAgo ? ((currentPrice - price9MonthsAgo) / price9MonthsAgo) * 100 : 0;
-    const month12 = price12MonthsAgo ? ((currentPrice - price12MonthsAgo) / price12MonthsAgo) * 100 : 0;
-
-    // Calculate weighted score for IBD methodology
-    const change6to3Month = price6MonthsAgo && price3MonthsAgo
-      ? ((price3MonthsAgo - price6MonthsAgo) / price6MonthsAgo) * 100 : 0;
-    const change9to6Month = price9MonthsAgo && price6MonthsAgo
-      ? ((price6MonthsAgo - price9MonthsAgo) / price9MonthsAgo) * 100 : 0;
-    const change12to9Month = price12MonthsAgo && price9MonthsAgo
-      ? ((price9MonthsAgo - price12MonthsAgo) / price12MonthsAgo) * 100 : 0;
-
-    const weightedScore = (
-      month3 * 0.4 +
-      change6to3Month * 0.2 +
-      change9to6Month * 0.2 +
-      change12to9Month * 0.2
-    );
-
-    return { month3, month6, month9, month12, weightedScore };
-  } catch (error) {
-    console.error(`[RS] Error calculating breakdown for ${ticker}:`, error);
-    return { month3: 0, month6: 0, month9: 0, month12: 0, weightedScore: 0 };
-  }
-}
-
-/**
- * Gets the price at approximately N trading days ago
- */
-function getPriceAtDaysAgo(prices: Array<{ close: number }>, daysAgo: number): number | null {
-  const index = Math.min(daysAgo - 1, prices.length - 1);
-  return index >= 0 && index < prices.length ? prices[index].close : null;
-}
-
-/**
- * Calculates percentile rank (1-99) of target score compared to all scores
- */
-function calculatePercentileRank(targetScore: number, allScores: number[]): number {
-  if (allScores.length === 0) {
-    return 50; // Default to middle if no comparison data
-  }
-
-  // Count how many scores are below the target
-  const belowCount = allScores.filter(score => score < targetScore).length;
-
-  // Calculate percentile (1-99 scale)
-  const percentile = Math.round((belowCount / allScores.length) * 99);
-
-  // Ensure it's between 1 and 99
-  return Math.max(1, Math.min(99, percentile || 1));
-}
-
-/**
- * Gets all unique tickers from the portfolio
- */
-async function getAllPortfolioTickers(): Promise<string[]> {
-  try {
-    const portfolioStocks = await Portfolio.find({}).select('ticker');
-    const tickers = portfolioStocks.map(stock => stock.ticker.toUpperCase());
-    return [...new Set(tickers)]; // Remove duplicates
-  } catch (error) {
-    console.error('[RS] Error fetching portfolio tickers:', error);
-    return [];
+    return fallbackRating;
   }
 }
 
@@ -264,20 +248,9 @@ export async function getRSRating(ticker: string): Promise<RSRating | null> {
 /**
  * Gets RS rating from cache or calculates if not cached/stale
  *
- * Attempts to retrieve a cached RS rating from the database. If the cached
- * rating is older than maxAgeHours, recalculates a fresh rating.
- *
  * @param ticker Stock ticker symbol
  * @param maxAgeHours Maximum age of cached rating in hours (default: 24)
  * @returns RS rating object (cached or freshly calculated)
- *
- * @example
- * // Get RS rating, using cache if less than 24 hours old
- * const rsRating = await getOrCalculateRSRating('AAPL');
- *
- * @example
- * // Force calculation if cache is older than 1 hour
- * const freshRating = await getOrCalculateRSRating('AAPL', 1);
  */
 export async function getOrCalculateRSRating(
   ticker: string,
