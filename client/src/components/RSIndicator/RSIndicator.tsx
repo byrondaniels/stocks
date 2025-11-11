@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { RSGaugeSection } from './RSGaugeSection';
-import { PerformanceGrid } from './PerformanceGrid';
 import { RSExplanation } from './RSExplanation';
 import './RSIndicator.css';
 
 /**
- * Relative Strength (RS) indicator component that displays IBD-style RS rating.
- * Shows a gauge visualization, price performance breakdown, and methodology explanation.
- * The RS rating compares a stock's 12-month price performance against all other stocks,
- * with higher ratings (80+) indicating stronger relative performance.
+ * Relative Strength (RS) indicator component that displays sector and stock strength.
+ * Shows two gauge visualizations:
+ * - Sector RS: How the stock's industry ETF performs vs SPY
+ * - Stock RS: How the stock performs vs its industry ETF
  *
  * @param ticker - Stock ticker symbol to analyze
  *
@@ -18,18 +17,11 @@ import './RSIndicator.css';
  * ```
  */
 
-interface RSPricePerformance {
-  month3: number;
-  month6: number;
-  month9: number;
-  month12: number;
-  weightedScore: number;
-}
-
 interface RSRating {
   ticker: string;
-  rating: number; // 1-99
-  pricePerformance: RSPricePerformance;
+  sectorRS: number; // 1-99 (Industry ETF vs SPY)
+  stockRS: number;  // 1-99 (Stock vs Industry ETF)
+  sectorETF: string | null; // Which ETF was used, or null if fallback to SPY
   calculatedAt: string;
 }
 
@@ -117,7 +109,7 @@ export function RSIndicator({ ticker }: RSIndicatorProps) {
   return (
     <div className="rs-container">
       <div className="rs-header">
-        <h2>IBD Relative Strength Rating</h2>
+        <h2>Relative Strength Analysis</h2>
         <button
           onClick={refreshRating}
           disabled={refreshing}
@@ -128,10 +120,28 @@ export function RSIndicator({ ticker }: RSIndicatorProps) {
         </button>
       </div>
 
+      {rsData.sectorETF && (
+        <div className="rs-sector-info">
+          Sector: <strong>{rsData.sectorETF}</strong>
+        </div>
+      )}
+
       <div className="rs-content">
-        <RSGaugeSection rating={rsData.rating} calculatedAt={rsData.calculatedAt} />
-        <PerformanceGrid pricePerformance={rsData.pricePerformance} />
-        <RSExplanation rating={rsData.rating} />
+        <div className="rs-gauges-container">
+          <RSGaugeSection
+            rating={rsData.sectorRS}
+            calculatedAt={rsData.calculatedAt}
+            label="Sector Strength"
+            description={rsData.sectorETF ? `${rsData.sectorETF} vs SPY` : "No sector data"}
+          />
+          <RSGaugeSection
+            rating={rsData.stockRS}
+            calculatedAt={rsData.calculatedAt}
+            label="Stock Strength"
+            description={rsData.sectorETF ? `${ticker} vs ${rsData.sectorETF}` : `${ticker} vs SPY`}
+          />
+        </div>
+        <RSExplanation sectorRS={rsData.sectorRS} stockRS={rsData.stockRS} sectorETF={rsData.sectorETF} />
       </div>
     </div>
   );

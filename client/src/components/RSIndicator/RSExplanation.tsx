@@ -1,32 +1,60 @@
 /**
  * Displays explanatory text about the RS Rating methodology and interpretation.
  *
- * @param rating - Current RS rating value to include in the explanation
+ * @param sectorRS - Sector RS rating value
+ * @param stockRS - Stock RS rating value
+ * @param sectorETF - The sector ETF used for comparison
  *
  * @example
  * ```tsx
- * <RSExplanation rating={85} />
+ * <RSExplanation sectorRS={75} stockRS={85} sectorETF="XLK" />
  * ```
  */
 
 interface RSExplanationProps {
-  rating: number;
+  sectorRS: number;
+  stockRS: number;
+  sectorETF: string | null;
 }
 
-export function RSExplanation({ rating }: RSExplanationProps) {
+export function RSExplanation({ sectorRS, stockRS, sectorETF }: RSExplanationProps) {
+  const getInterpretation = () => {
+    if (sectorRS >= 70 && stockRS >= 70) {
+      return "This is a true leader: strong stock in a strong sector.";
+    } else if (stockRS >= 70 && sectorRS < 50) {
+      return "Strong stock in a weak sector - could be a contrarian opportunity.";
+    } else if (sectorRS >= 70 && stockRS < 50) {
+      return "Strong sector but stock is lagging - consider other stocks in this sector.";
+    } else if (sectorRS < 30 && stockRS < 30) {
+      return "Both sector and stock are weak - proceed with caution.";
+    } else {
+      return "Mixed performance - evaluate both sector trends and stock fundamentals.";
+    }
+  };
+
   return (
     <div className="rs-explanation">
-      <h3>About RS Rating</h3>
-      <p>
-        The IBD Relative Strength (RS) Rating compares this stock&apos;s price performance
-        over the past 12 months against all other stocks in your portfolio. A rating of{' '}
-        <strong>{rating}</strong> means this stock has outperformed{' '}
-        <strong>{rating}%</strong> of stocks.
+      <h3>Interpretation</h3>
+      <p className="rs-interpretation">
+        <strong>{getInterpretation()}</strong>
       </p>
+      <h3>About This Analysis</h3>
       <p>
-        The rating uses a weighted calculation: 40% weight on the most recent 3 months,
-        and 20% weight each on months 4-6, 7-9, and 10-12. Strong stocks typically have
-        RS Ratings of 80 or higher.
+        This Relative Strength analysis calculates two separate scores:
+      </p>
+      <ul>
+        <li>
+          <strong>Sector Strength:</strong> Measures how the {sectorETF || "market"} performs relative to SPY
+          (the S&P 500 benchmark).
+        </li>
+        <li>
+          <strong>Stock Strength:</strong> Measures how this stock performs relative to its {sectorETF ? `sector ETF (${sectorETF})` : "the S&P 500"}.
+        </li>
+      </ul>
+      <p>
+        Both calculations use a weighted approach across multiple timeframes (3, 6, and 12 months),
+        with more weight given to recent performance (40% on 3-month, 30% on 6-month, 30% on 12-month).
+        Scores are normalized to a 1-99 scale, where 50 represents average performance.
       </p>
     </div>
   );
