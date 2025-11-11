@@ -9,7 +9,6 @@ import OwnershipPieChart from './OwnershipPieChart';
 import { CANSLIMScore as CANSLIMScoreComponent } from './CANSLIMScore';
 import { RSIndicator } from './RSIndicator';
 import { MovingAverageSection, InsiderActivitySection } from './StockDetail';
-import { SpinoffAnalysis } from './SpinoffAnalysis';
 import TabNavigation, { Tab } from './TabNavigation';
 import { InsiderData, OwnershipData, MovingAverageData, PriceHistoryPoint } from '../types';
 
@@ -41,7 +40,6 @@ export function StockDataSections({
   const tabs: Tab[] = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'analysis', label: 'Analysis', icon: '📈' },
-    { id: 'spinoff', label: 'Spinoff Analysis', icon: '🔄' },
   ];
 
   const renderTabContent = () => {
@@ -96,13 +94,6 @@ export function StockDataSections({
               <RSIndicator ticker={ticker} />
             </div>
           </>
-        );
-
-      case 'spinoff':
-        return (
-          <div className="spinoff-tab-content">
-            <SpinoffAnalysis ticker={ticker} />
-          </div>
         );
 
       default:
