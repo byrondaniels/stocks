@@ -174,7 +174,7 @@ export function HindenburgOmen() {
             </div>
             <div className="criterion-title">High/Low Ratio</div>
             <div className="criterion-description">
-              Highs can't be more than 2x the lows
+              Highs can&apos;t be more than 2x the lows
             </div>
             <div className="criterion-values">
               <div className="value-row">
@@ -248,11 +248,11 @@ export function HindenburgOmen() {
           <h3>About the Hindenburg Omen</h3>
           <p>
             The Hindenburg Omen is a technical analysis pattern that attempts to predict a stock market crash.
-            It was named after the Hindenburg disaster, reflecting the indicator's ominous nature.
+            It was named after the Hindenburg disaster, reflecting the indicator&apos;s ominous nature.
           </p>
           <p>
             <strong>Historical Context:</strong> The indicator has preceded some notable market crashes,
-            including the 1987 Black Monday crash and the 2008 financial crisis. However, it's important
+            including the 1987 Black Monday crash and the 2008 financial crisis. However, it&apos;s important
             to note that not all Hindenburg Omen signals result in crashes, and it should be used as one
             of many tools in risk assessment.
           </p>

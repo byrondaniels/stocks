@@ -27,7 +27,7 @@ interface StockHeaderProps {
  * />
  * ```
  */
-export function StockHeader({ ticker, currentPrice, profitLoss, profitLossPercent, companyName }: StockHeaderProps) {
+export function StockHeader({ ticker, currentPrice, profitLoss, profitLossPercent }: StockHeaderProps) {
   const isProfitable = profitLoss !== undefined && profitLoss >= 0;
   const hasPortfolioData = profitLoss !== undefined || profitLossPercent !== undefined;
 

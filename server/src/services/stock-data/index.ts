@@ -30,46 +30,93 @@ import {
 
 import { getRateLimitStatus as getRateLimitStatusInternal } from "./rate-limiter.js";
 
-import { fetchAlphaVantageQuote, fetchAlphaVantageHistorical } from "./alpha-vantage.js";
-import { fetchFMPQuote, fetchFMPProfile } from "./fmp.js";
+import { fetchAlphaVantageHistorical } from "./alpha-vantage.js";
+import { fetchFMPProfile } from "./fmp.js";
+import { fetchYahooHistorical } from "./yahoo-finance.js";
 
 import type { StockPrice, FinancialMetrics, HistoricalPrices, CompanyProfile, VolumeAnalysis } from "./types.js";
+import { StockPrice as StockPriceModel } from "../../db/models/StockPrice.model.js";
 
 /**
  * Get current stock price for a ticker
- * Uses Alpha Vantage as primary source, FMP as fallback
- * Cached for 1 hour
+ * Extracts from cached historical data (most recent day)
+ * Falls back to API calls only if no historical data available
+ * Cached for 24 hours
  */
 export async function getCurrentPrice(ticker: string): Promise<StockPrice> {
   const normalizedTicker = ticker.toUpperCase();
 
-  // Check cache first
+  // Check in-memory cache first
   const cached = priceCache.get(normalizedTicker);
   if (isCacheValid(cached, PRICE_CACHE_TTL)) {
     console.log(`[StockData] Returning cached price for ${normalizedTicker}`);
     return cached!.data;
   }
 
-  console.log(`[StockData] Fetching current price for ${normalizedTicker}`);
+  console.log(`[StockData] Extracting current price from historical data for ${normalizedTicker}`);
 
+  // Get historical data (this uses our efficient database caching)
+  try {
+    const historical = await getHistoricalPrices(normalizedTicker, 5); // Get last 5 days to ensure we have recent data
+    
+    if (historical.prices && historical.prices.length > 0) {
+      // Sort by date to get the most recent
+      const sortedPrices = historical.prices.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      
+      const mostRecent = sortedPrices[0];
+      const previousDay = sortedPrices[1];
+      
+      // Calculate change from previous day
+      const change = previousDay ? mostRecent.close - previousDay.close : 0;
+      const changePercent = previousDay ? ((change / previousDay.close) * 100) : 0;
+      
+      const currentPrice: StockPrice = {
+        ticker: normalizedTicker,
+        price: mostRecent.close,
+        change: parseFloat(change.toFixed(2)),
+        changePercent: parseFloat(changePercent.toFixed(2)),
+        volume: mostRecent.volume,
+        timestamp: new Date().toISOString(),
+        source: historical.source,
+      };
+      
+      // Cache the result
+      setCache(priceCache, normalizedTicker, currentPrice);
+      console.log(`[StockData] Extracted current price for ${normalizedTicker}: $${currentPrice.price}`);
+      return currentPrice;
+    }
+  } catch (error) {
+    console.warn(`[StockData] Could not extract price from historical data for ${normalizedTicker}:`, error);
+  }
+
+  // Fallback to direct API calls if no historical data available
+  console.log(`[StockData] No historical data available, fetching current price via API for ${normalizedTicker}`);
+
+  /* ORIGINAL API CODE - KEPT FOR POTENTIAL FUTURE USE
   // Try Alpha Vantage first
   try {
     const price = await fetchAlphaVantageQuote(normalizedTicker);
     setCache(priceCache, normalizedTicker, price);
     return price;
   } catch (error) {
-    console.warn('[StockData] Alpha Vantage failed, trying FMP:', error);
+    console.warn('[StockData] Alpha Vantage failed, trying Yahoo Finance:', error);
 
-    // Fallback to FMP
+    // Fallback to Yahoo Finance
     try {
-      const price = await fetchFMPQuote(normalizedTicker);
+      const price = await fetchYahooQuote(normalizedTicker);
       setCache(priceCache, normalizedTicker, price);
       return price;
-    } catch (fmpError) {
-      console.error('[StockData] All price sources failed:', fmpError);
-      throw fmpError;
+    } catch (yahooError) {
+      console.error('[StockData] All price sources failed:', yahooError);
+      throw yahooError;
     }
   }
+  */
+
+  // For now, throw an error if no historical data is available
+  throw new Error(`No current price data available for ${normalizedTicker} - no historical data found`);
 }
 
 
@@ -114,8 +161,8 @@ export async function getFinancialMetrics(ticker: string): Promise<FinancialMetr
 
 /**
  * Get historical daily OHLCV prices
- * Uses Alpha Vantage as primary source
- * Cached for 1 hour
+ * Uses database cache (24 hours), then Alpha Vantage as primary source, Yahoo Finance as fallback
+ * Cached in database for 24 hours and in-memory for 24 hours
  */
 export async function getHistoricalPrices(
   ticker: string,
@@ -124,22 +171,90 @@ export async function getHistoricalPrices(
   const normalizedTicker = ticker.toUpperCase();
   const cacheKey = `${normalizedTicker}:${days}`;
 
-  // Check cache first
+  // Check in-memory cache first
   const cached = historicalCache.get(cacheKey);
   if (isCacheValid(cached, HISTORICAL_CACHE_TTL)) {
     console.log(
-      `[StockData] Returning cached historical prices for ${normalizedTicker} (${days} days)`
+      `[StockData] Returning memory cached historical prices for ${normalizedTicker} (${days} days)`
     );
     return cached!.data;
   }
 
+  // Check database cache
+  const cacheThreshold = new Date(Date.now() - HISTORICAL_CACHE_TTL);
+  const cachedData = await StockPriceModel.findOne({
+    ticker: normalizedTicker,
+    lastFetched: { $gte: cacheThreshold }
+  }).sort({ lastFetched: -1 });
+
+  if (cachedData) {
+    console.log(
+      `[StockData] Checking database for ${normalizedTicker} historical data`
+    );
+
+    // Get all cached historical data for this ticker
+    const dbHistorical = await StockPriceModel.find({
+      ticker: normalizedTicker,
+      lastFetched: { $gte: cacheThreshold }
+    })
+    .sort({ date: -1 })
+    .limit(days);
+
+    if (dbHistorical.length >= Math.min(days, 30)) { // Require at least 30 days or requested days
+      console.log(
+        `[StockData] Returning database cached historical prices for ${normalizedTicker} (${dbHistorical.length} days)`
+      );
+
+      const historical: HistoricalPrices = {
+        ticker: normalizedTicker,
+        prices: dbHistorical.map(item => ({
+          date: item.date.toISOString().split('T')[0],
+          open: item.open,
+          high: item.high,
+          low: item.low,
+          close: item.close,
+          volume: item.volume,
+        })),
+        source: cachedData.source || 'database',
+        timestamp: new Date().toISOString(),
+      };
+
+      // Cache in memory too
+      setCache(historicalCache, cacheKey, historical);
+      return historical;
+    }
+  }
+
   console.log(
-    `[StockData] Fetching historical prices for ${normalizedTicker} (${days} days)`
+    `[StockData] Fetching fresh historical prices for ${normalizedTicker} (${days} days)`
   );
 
-  const historical = await fetchAlphaVantageHistorical(normalizedTicker, days);
-  setCache(historicalCache, cacheKey, historical);
-  return historical;
+  // Try Alpha Vantage first
+  try {
+    const historical = await fetchAlphaVantageHistorical(normalizedTicker, days);
+    
+    // Save to database
+    await saveHistoricalToDatabase(normalizedTicker, historical);
+    
+    setCache(historicalCache, cacheKey, historical);
+    return historical;
+  } catch (error) {
+    console.warn('[StockData] Alpha Vantage historical failed, trying Yahoo Finance:', error);
+
+    // Fallback to Yahoo Finance
+    try {
+      const historical = await fetchYahooHistorical(normalizedTicker, days);
+      
+      // Save to database
+      await saveHistoricalToDatabase(normalizedTicker, historical);
+      
+      setCache(historicalCache, cacheKey, historical);
+      return historical;
+    } catch (yahooError) {
+      console.error('[StockData] All historical sources failed:', yahooError);
+      throw yahooError;
+    }
+  }
 }
 
 /**
@@ -233,6 +348,50 @@ export async function getVolumeAnalysis(ticker: string): Promise<VolumeAnalysis>
 /**
  * Get current rate limit status for all APIs
  */
+/**
+ * Save historical price data to database
+ */
+async function saveHistoricalToDatabase(
+  ticker: string,
+  historical: HistoricalPrices
+): Promise<void> {
+  const now = new Date();
+  
+  try {
+    const operations = historical.prices.map(price => ({
+      updateOne: {
+        filter: { 
+          ticker: ticker.toUpperCase(),
+          date: new Date(price.date)
+        },
+        update: {
+          $set: {
+            ticker: ticker.toUpperCase(),
+            date: new Date(price.date),
+            open: price.open,
+            high: price.high,
+            low: price.low,
+            close: price.close,
+            volume: price.volume,
+            source: historical.source,
+            lastFetched: now,
+            updatedAt: now
+          }
+        },
+        upsert: true
+      }
+    }));
+
+    if (operations.length > 0) {
+      await StockPriceModel.bulkWrite(operations);
+      console.log(`[StockData] Saved ${operations.length} historical prices for ${ticker} to database`);
+    }
+  } catch (error) {
+    console.error(`[StockData] Error saving historical data to database for ${ticker}:`, error);
+    // Don't throw error - this shouldn't break the main flow
+  }
+}
+
 export function getRateLimitStatus() {
   return getRateLimitStatusInternal(ALPHA_VANTAGE_DAILY_LIMIT, FMP_DAILY_LIMIT);
 }

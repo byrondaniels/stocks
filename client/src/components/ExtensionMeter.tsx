@@ -156,7 +156,7 @@ export function ExtensionMeter() {
 
         <div className="extension-info">
           <p>
-            <strong>Extension Meter</strong> shows how far each symbol's current price is from its 50-day moving average.
+            <strong>Extension Meter</strong> shows how far each symbol&apos;s current price is from its 50-day moving average.
             Positive values indicate the price is above the 50DMA (bullish), while negative values indicate below (bearish).
             Values above +10% or below -10% suggest the asset may be overextended and due for a pullback or bounce.
           </p>

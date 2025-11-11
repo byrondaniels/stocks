@@ -43,7 +43,7 @@ PortfolioSchema.index({ purchaseDate: -1 });
 
 /**
  * Stock Prices Collection Schema
- * Stores historical stock price data
+ * Stores historical stock price data with caching metadata
  */
 export const StockPriceSchema = new Schema(
   {
@@ -82,15 +82,25 @@ export const StockPriceSchema = new Schema(
       required: true,
       min: 0,
     },
+    source: {
+      type: String,
+      required: false,
+    },
+    lastFetched: {
+      type: Date,
+      required: false,
+      default: Date.now,
+    },
   },
   {
-    timestamps: false, // Historical data doesn't need timestamps
+    timestamps: true, // Add createdAt and updatedAt for cache management
   }
 );
 
 // Compound indexes for efficient queries
 StockPriceSchema.index({ ticker: 1, date: -1 });
 StockPriceSchema.index({ date: -1 });
+StockPriceSchema.index({ ticker: 1, lastFetched: -1 });
 
 // Unique constraint to prevent duplicate price entries for same date
 StockPriceSchema.index({ ticker: 1, date: 1 }, { unique: true });
