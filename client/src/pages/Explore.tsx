@@ -11,7 +11,6 @@ import { TICKER_REGEX, normalizeTicker } from '../../../shared/validation';
 import { addRecentSearch } from '../utils/recentSearches';
 import { StockHeader } from '../components/StockDetail';
 import { StockDataSections } from '../components/StockDataSections';
-import { JoelGreenblatMenu } from '../components/JoelGreenblatMenu';
 import '../pages/StockDetail.css';
 
 interface StockDataResponse {
@@ -224,9 +223,6 @@ export function Explore() {
           <h1>{stockData.companyName || stockData.ticker}</h1>
         )}
       </header>
-
-      {/* Joel Greenblatt Menu - Spinoff Analysis */}
-      <JoelGreenblatMenu />
 
       {error && <div className="alert error">{error}</div>}
       {stockData && (

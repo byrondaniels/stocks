@@ -1,179 +1,134 @@
-/* Joel Greenblatt Menu Container */
-.joel-greenblat-menu {
-  width: 100%;
-  margin-bottom: 2rem;
-  position: relative;
-}
-
-/* Dropdown Toggle Button */
-.dropdown-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  justify-content: center;
-}
-
-.dropdown-toggle:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-.menu-icon {
-  font-size: 1.25rem;
-}
-
-.dropdown-arrow {
-  margin-left: auto;
-  transition: transform 0.3s ease;
-  font-size: 0.75rem;
-}
-
-.dropdown-arrow.open {
-  transform: rotate(180deg);
-}
-
-/* Dropdown Menu */
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 0.5rem);
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  overflow: hidden;
-  animation: dropdown-appear 0.2s ease;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9998;
+  animation: overlay-fade-in 0.2s ease;
 }
 
-@keyframes dropdown-appear {
+@keyframes overlay-fade-in {
   from {
     opacity: 0;
-    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 1rem 1.5rem;
+/* Modal Container */
+.joel-greenblatt-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 1200px;
+  max-height: 90vh;
   background: white;
-  border: none;
-  text-align: left;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.dropdown-item:hover {
-  background: #f3f4f6;
-}
-
-.item-icon {
-  font-size: 1.125rem;
-}
-
-/* Spinoff Section */
-.spinoff-section {
-  margin-top: 1rem;
-  background: white;
-  border: 2px solid #e5e7eb;
   border-radius: 12px;
-  overflow: hidden;
-  animation: section-appear 0.3s ease;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  animation: modal-slide-in 0.3s ease;
 }
 
-@keyframes section-appear {
+@keyframes modal-slide-in {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translate(-50%, -45%);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, -50%);
   }
 }
 
-.spinoff-header-bar {
+/* Modal Header */
+.modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem;
+  padding: 1.5rem 2rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
 }
 
-.spinoff-header-bar h3 {
+.modal-header h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.close-button {
+.modal-icon {
+  font-size: 1.75rem;
+}
+
+.modal-close-button {
   background: rgba(255, 255, 255, 0.2);
   color: white;
   border: none;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   line-height: 1;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
-.close-button:hover {
+.modal-close-button:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.1);
 }
 
+/* Modal Body */
+.modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
 /* Ticker Input Section */
 .ticker-input-section {
-  padding: 2rem;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem 0;
 }
 
 .input-description {
   color: #6b7280;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
   line-height: 1.6;
-  font-size: 0.9375rem;
+  font-size: 1rem;
+  text-align: center;
 }
 
 .input-group {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .ticker-input {
   flex: 1;
-  padding: 0.875rem 1.25rem;
+  padding: 1rem 1.5rem;
   border: 2px solid #e5e7eb;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #1f2937;
   transition: all 0.2s ease;
@@ -192,12 +147,12 @@
 }
 
 .analyze-button {
-  padding: 0.875rem 2rem;
+  padding: 1rem 2.5rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -206,7 +161,7 @@
 
 .analyze-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .analyze-button:active {
@@ -215,32 +170,33 @@
 
 .error-message {
   color: #dc2626;
-  font-size: 0.875rem;
-  padding: 0.5rem 0;
+  font-size: 0.9375rem;
+  padding: 0.75rem 0;
   font-weight: 500;
+  text-align: center;
 }
 
 /* Analysis Content */
 .analysis-content {
-  background: #f9fafb;
+  width: 100%;
 }
 
 .analysis-toolbar {
-  padding: 1rem 1.5rem;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 0 0 1.5rem 0;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 2rem;
 }
 
 .change-ticker-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1rem;
+  padding: 0.75rem 1.25rem;
   background: white;
   color: #667eea;
   border: 2px solid #667eea;
-  border-radius: 6px;
-  font-size: 0.875rem;
+  border-radius: 8px;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -249,45 +205,70 @@
 .change-ticker-button:hover {
   background: #667eea;
   color: white;
+  transform: translateX(-4px);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .dropdown-toggle {
-    padding: 0.875rem 1.25rem;
-    font-size: 0.9375rem;
+  .joel-greenblatt-modal {
+    width: 95%;
+    max-height: 95vh;
   }
 
-  .menu-icon {
-    font-size: 1.125rem;
+  .modal-header {
+    padding: 1.25rem 1.5rem;
   }
 
-  .dropdown-item {
-    padding: 0.875rem 1.25rem;
-    font-size: 0.875rem;
+  .modal-header h2 {
+    font-size: 1.25rem;
   }
 
-  .spinoff-header-bar {
-    padding: 0.875rem 1.25rem;
+  .modal-icon {
+    font-size: 1.5rem;
   }
 
-  .spinoff-header-bar h3 {
-    font-size: 1.125rem;
+  .modal-close-button {
+    width: 32px;
+    height: 32px;
+    font-size: 1.5rem;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
   }
 
   .ticker-input-section {
-    padding: 1.5rem;
+    padding: 1rem 0;
+  }
+
+  .input-description {
+    font-size: 0.9375rem;
+    margin-bottom: 1.5rem;
   }
 
   .input-group {
     flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .ticker-input {
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
   }
 
   .analyze-button {
     width: 100%;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
   }
 
   .analysis-toolbar {
-    padding: 1rem;
+    padding: 0 0 1rem 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .change-ticker-button {
+    font-size: 0.9375rem;
+    padding: 0.625rem 1rem;
   }
 }

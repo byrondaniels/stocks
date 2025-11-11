@@ -1,29 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SpinoffAnalysis } from '../SpinoffAnalysis';
 import './JoelGreenblatMenu.css';
 
 /**
  * Joel Greenblatt Menu Component
  *
- * Dropdown menu providing access to Joel Greenblatt's investment strategies,
+ * Modal providing access to Joel Greenblatt's investment strategies,
  * including spinoff analysis. Users can enter a ticker symbol to analyze
  * potential spinoff investments.
  */
-export function JoelGreenblatMenu() {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+interface JoelGreenblatMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function JoelGreenblatMenu({ isOpen, onClose }: JoelGreenblatMenuProps) {
   const [tickerInput, setTickerInput] = useState('');
   const [analyzedTicker, setAnalyzedTicker] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const toggleDropdown = () => {
-    setIsDropdownOpen(!isDropdownOpen);
-  };
+  // Close on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleClose();
+      }
+    };
 
-  const handleSpinoffClick = () => {
-    setIsAnalysisOpen(true);
-    setIsDropdownOpen(false);
-  };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const handleAnalyze = () => {
     const ticker = tickerInput.trim().toUpperCase();
@@ -50,45 +68,34 @@ export function JoelGreenblatMenu() {
   };
 
   const handleClose = () => {
-    setIsAnalysisOpen(false);
     setAnalyzedTicker(null);
     setTickerInput('');
     setError(null);
+    onClose();
   };
 
-  return (
-    <div className="joel-greenblat-menu">
-      <div className="menu-header">
-        <button
-          className="dropdown-toggle"
-          onClick={toggleDropdown}
-          aria-expanded={isDropdownOpen}
-        >
-          <span className="menu-icon">📚</span>
-          Joel Greenblatt
-          <span className={`dropdown-arrow ${isDropdownOpen ? 'open' : ''}`}>▼</span>
-        </button>
-      </div>
+  if (!isOpen) {
+    return null;
+  }
 
-      {isDropdownOpen && (
-        <div className="dropdown-menu">
-          <button
-            className="dropdown-item"
-            onClick={handleSpinoffClick}
-          >
-            <span className="item-icon">🔄</span>
-            Spinoff Analysis
+  return (
+    <>
+      {/* Modal Overlay */}
+      <div className="modal-overlay" onClick={handleClose} />
+
+      {/* Modal Content */}
+      <div className="joel-greenblatt-modal">
+        <div className="modal-header">
+          <h2>
+            <span className="modal-icon">📚</span>
+            Joel Greenblatt - Spinoff Analysis
+          </h2>
+          <button className="modal-close-button" onClick={handleClose}>
+            ×
           </button>
         </div>
-      )}
 
-      {isAnalysisOpen && (
-        <div className="spinoff-section">
-          <div className="spinoff-header-bar">
-            <h3>Spinoff Analysis</h3>
-            <button className="close-button" onClick={handleClose}>×</button>
-          </div>
-
+        <div className="modal-body">
           {!analyzedTicker ? (
             <div className="ticker-input-section">
               <p className="input-description">
@@ -104,6 +111,7 @@ export function JoelGreenblatMenu() {
                   onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
                   onKeyPress={handleKeyPress}
                   maxLength={5}
+                  autoFocus
                 />
                 <button
                   className="analyze-button"
@@ -131,7 +139,7 @@ export function JoelGreenblatMenu() {
             </div>
           )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 }

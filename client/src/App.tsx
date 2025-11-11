@@ -3,6 +3,7 @@
  * Handles routing and navigation
  */
 
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Portfolio } from './pages/Portfolio';
@@ -11,10 +12,12 @@ import { StockDetail } from './pages/StockDetail';
 import { Explore } from './pages/Explore';
 import { MarketHealth } from './pages/MarketHealth';
 import { HeaderStockSearch } from './components/HeaderStockSearch';
+import { JoelGreenblatMenu } from './components/JoelGreenblatMenu';
 import './App.css';
 
 function Navigation() {
   const location = useLocation();
+  const [isSpinoffModalOpen, setIsSpinoffModalOpen] = useState(false);
 
   return (
     <nav className="main-nav">
@@ -44,8 +47,20 @@ function Navigation() {
           >
             Market Health
           </Link>
+          <button
+            className="nav-button"
+            onClick={() => setIsSpinoffModalOpen(true)}
+          >
+            📚 Joel Greenblatt
+          </button>
         </div>
       </div>
+
+      {/* Spinoff Analysis Modal */}
+      <JoelGreenblatMenu
+        isOpen={isSpinoffModalOpen}
+        onClose={() => setIsSpinoffModalOpen(false)}
+      />
     </nav>
   );
 }
