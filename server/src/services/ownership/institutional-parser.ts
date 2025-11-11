@@ -138,7 +138,7 @@ function extractManagerName(doc: any, fallbackCik: string): string {
     }
 
     return `CIK ${fallbackCik}`;
-  } catch (error) {
+  } catch {
     return `CIK ${fallbackCik}`;
   }
 }
@@ -159,7 +159,7 @@ function extractReportingPeriod(doc: any): string {
     }
 
     return new Date().toISOString().split('T')[0];
-  } catch (error) {
+  } catch {
     return new Date().toISOString().split('T')[0];
   }
 }
@@ -199,13 +199,13 @@ function extractHoldings(doc: any): Array<{
         if (cusip && name && shares > 0) {
           holdings.push({ cusip, name, shares, value });
         }
-      } catch (err) {
+      } catch {
         continue;
       }
     }
 
     return holdings;
-  } catch (error) {
+  } catch {
     return [];
   }
 }

@@ -25,7 +25,7 @@ interface RSGaugeSectionProps {
   description: string;
 }
 
-export function RSGaugeSection({ rating, calculatedAt, label, description }: RSGaugeSectionProps) {
+export function RSGaugeSection({ rating, label, description }: RSGaugeSectionProps) {
   const getRatingColor = (ratingValue: number): string => {
     if (ratingValue >= 70) return '#22c55e'; // green - Strong
     if (ratingValue >= 60) return '#84cc16'; // lime - Good

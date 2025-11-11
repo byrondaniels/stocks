@@ -157,7 +157,7 @@ function extractFilerName(reportingOwner: any): string | null {
     }
 
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -200,7 +200,7 @@ function extractOwnershipData(doc: any): {
       formType,
       purpose,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }

@@ -5,7 +5,7 @@
 
 import { Request, Response as ExpressResponse, Router } from "express";
 import { getMarketHealthData } from "../services/marketHealth.js";
-import { HTTP_STATUS, ERROR_MESSAGES } from "../constants.js";
+import { ERROR_MESSAGES } from "../constants.js";
 import { handleApiError } from "../utils/errorHandler.js";
 import { getCurrentPrice } from "../services/stockData.js";
 import { fetchAndStoreHistoricalPrices, calculateMovingAverage } from "../services/priceHistory.js";

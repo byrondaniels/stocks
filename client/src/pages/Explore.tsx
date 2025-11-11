@@ -3,10 +3,10 @@
  * Allows users to explore stock data without adding to portfolio/watchlist
  */
 
-import { useEffect, useState, FormEvent } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { InsiderData, OwnershipData, MovingAverageData, PriceHistoryPoint } from '../types';
-import { HISTORICAL_DAYS_DEFAULT, TICKER_MAX_LENGTH } from '../constants';
+import { HISTORICAL_DAYS_DEFAULT } from '../constants';
 import { TICKER_REGEX, normalizeTicker } from '../../../shared/validation';
 import { addRecentSearch } from '../utils/recentSearches';
 import { StockHeader } from '../components/StockDetail';
@@ -21,8 +21,6 @@ interface StockDataResponse {
 
 export function Explore() {
   const { ticker: urlTicker } = useParams<{ ticker?: string }>();
-  const navigate = useNavigate();
-  const [ticker, setTicker] = useState(urlTicker || '');
   const [stockData, setStockData] = useState<StockDataResponse | null>(null);
   const [insiderData, setInsiderData] = useState<InsiderData | null>(null);
   const [ownershipData, setOwnershipData] = useState<OwnershipData | null>(null);
@@ -34,7 +32,7 @@ export function Explore() {
   const [loadingPriceHistory, setLoadingPriceHistory] = useState(false);
   const [loadingMA, setLoadingMA] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [, setHasSearched] = useState(false);
 
   // Set page title
   useEffect(() => {
@@ -46,7 +44,6 @@ export function Explore() {
     if (urlTicker) {
       const normalizedTicker = normalizeTicker(urlTicker);
       if (TICKER_REGEX.test(normalizedTicker)) {
-        setTicker(normalizedTicker);
         // Reset hasSearched and trigger data fetch when URL changes
         setHasSearched(true);
         setError(null);
@@ -187,37 +184,7 @@ export function Explore() {
     }
   };
 
-  const handleSearch = async (searchTicker?: string) => {
-    const tickerToSearch = searchTicker || ticker;
-    const normalizedTicker = normalizeTicker(tickerToSearch);
 
-    if (!normalizedTicker || !TICKER_REGEX.test(normalizedTicker)) {
-      setError('Please enter a valid ticker symbol (e.g., AAPL, BRK.B)');
-      return;
-    }
-
-    setHasSearched(true);
-    setError(null);
-
-    // Update URL without triggering navigation
-    if (!searchTicker) {
-      navigate(`/explore/${normalizedTicker}`, { replace: true });
-    }
-
-    // Fetch all data in parallel
-    await Promise.all([
-      fetchStockPrice(normalizedTicker),
-      fetchInsiderData(normalizedTicker),
-      fetchOwnershipData(normalizedTicker),
-      fetchMovingAverageData(normalizedTicker),
-      fetchPriceHistory(normalizedTicker),
-    ]);
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    await handleSearch();
-  };
 
   if (loading) {
     return (

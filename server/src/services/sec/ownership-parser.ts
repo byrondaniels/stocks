@@ -41,7 +41,7 @@ export async function fetchOwnershipDocument(
 export function parseOwnershipXml(
   xml: string,
   filing: RecentFiling,
-  cik: string
+  _cik: string
 ): ParsedTransaction[] {
   const parsed = xmlParser.parse(xml);
   const doc = parsed?.ownershipDocument;
