@@ -15,6 +15,7 @@ import {
   ownershipCache,
   financialsCache,
   historicalCache,
+  profileCache,
   isCacheValid,
   setCache,
 } from "./cache.js";
@@ -24,6 +25,7 @@ import {
   OWNERSHIP_CACHE_TTL,
   FINANCIALS_CACHE_TTL,
   HISTORICAL_CACHE_TTL,
+  PROFILE_CACHE_TTL,
   ALPHA_VANTAGE_DAILY_LIMIT,
   FMP_DAILY_LIMIT,
 } from "./config.js";
@@ -31,9 +33,9 @@ import {
 import { getRateLimitStatus as getRateLimitStatusInternal } from "./rate-limiter.js";
 
 import { fetchAlphaVantageQuote, fetchAlphaVantageHistorical } from "./alpha-vantage.js";
-import { fetchFMPQuote } from "./fmp.js";
+import { fetchFMPQuote, fetchFMPProfile } from "./fmp.js";
 
-import type { StockPrice, OwnershipData, FinancialMetrics, HistoricalPrices } from "./types.js";
+import type { StockPrice, OwnershipData, FinancialMetrics, HistoricalPrices, CompanyProfile } from "./types.js";
 
 /**
  * Get current stock price for a ticker
@@ -172,6 +174,28 @@ export async function getHistoricalPrices(
   const historical = await fetchAlphaVantageHistorical(normalizedTicker, days);
   setCache(historicalCache, cacheKey, historical);
   return historical;
+}
+
+/**
+ * Get company profile including sector and industry information
+ * Uses Financial Modeling Prep
+ * Cached for 7 days (sector/industry rarely changes)
+ */
+export async function getCompanyProfile(ticker: string): Promise<CompanyProfile> {
+  const normalizedTicker = ticker.toUpperCase();
+
+  // Check cache first
+  const cached = profileCache.get(normalizedTicker);
+  if (isCacheValid(cached, PROFILE_CACHE_TTL)) {
+    console.log(`[StockData] Returning cached profile for ${normalizedTicker}`);
+    return cached!.data;
+  }
+
+  console.log(`[StockData] Fetching company profile for ${normalizedTicker}`);
+
+  const profile = await fetchFMPProfile(normalizedTicker);
+  setCache(profileCache, normalizedTicker, profile);
+  return profile;
 }
 
 /**

@@ -22,6 +22,8 @@ interface RSRating {
   sectorRS: number; // 1-99 (Industry ETF vs SPY)
   stockRS: number;  // 1-99 (Stock vs Industry ETF)
   sectorETF: string | null; // Which ETF was used, or null if fallback to SPY
+  sector: string | null; // The stock's sector
+  industry: string | null; // The stock's industry
   calculatedAt: string;
 }
 
@@ -120,9 +122,11 @@ export function RSIndicator({ ticker }: RSIndicatorProps) {
         </button>
       </div>
 
-      {rsData.sectorETF && (
+      {(rsData.sector || rsData.industry || rsData.sectorETF) && (
         <div className="rs-sector-info">
-          Sector: <strong>{rsData.sectorETF}</strong>
+          {rsData.sector && <div>Sector: <strong>{rsData.sector}</strong></div>}
+          {rsData.industry && <div>Industry: <strong>{rsData.industry}</strong></div>}
+          {rsData.sectorETF && <div>Benchmark ETF: <strong>{rsData.sectorETF}</strong></div>}
         </div>
       )}
 

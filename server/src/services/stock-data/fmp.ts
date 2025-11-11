@@ -3,7 +3,7 @@
  * Provides ownership, financials, and metrics data
  */
 
-import type { StockPrice, OwnershipData, FinancialMetrics, ApiError } from "./types.js";
+import type { StockPrice, OwnershipData, FinancialMetrics, CompanyProfile, ApiError } from "./types.js";
 import { FMP_KEY, FMP_BASE, FMP_DAILY_LIMIT } from "./config.js";
 import {
   fmpRateLimit,
@@ -251,6 +251,60 @@ export async function fetchFMPFinancials(ticker: string): Promise<FinancialMetri
     };
 
     return financialMetrics;
+  } catch (error) {
+    return handleApiError(error, 'FMP');
+  }
+}
+
+export async function fetchFMPProfile(ticker: string): Promise<CompanyProfile> {
+  if (!FMP_KEY) {
+    throw new Error('FMP API key not configured');
+  }
+
+  if (!canMakeRequest(fmpRateLimit, FMP_DAILY_LIMIT)) {
+    const error: ApiError = {
+      message: 'FMP daily rate limit exceeded',
+      code: 'RATE_LIMIT',
+      retryAfter: 86400,
+    };
+    throw error;
+  }
+
+  await enforceInterval(fmpRateLimit);
+
+  const url = `${FMP_BASE}/profile/${ticker}?apikey=${FMP_KEY}`;
+
+  try {
+    const response = await fetchWithRetry(url);
+    recordRequest(fmpRateLimit);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data || data.length === 0) {
+      throw new Error('Ticker not found');
+    }
+
+    const profile = data[0];
+
+    const companyProfile: CompanyProfile = {
+      ticker: ticker.toUpperCase(),
+      name: profile.companyName || profile.symbol || '',
+      sector: profile.sector || null,
+      industry: profile.industry || null,
+      description: profile.description || undefined,
+      ceo: profile.ceo || undefined,
+      employees: profile.fullTimeEmployees ? parseInt(profile.fullTimeEmployees) : undefined,
+      country: profile.country || undefined,
+      website: profile.website || undefined,
+      source: 'fmp',
+      timestamp: new Date().toISOString(),
+    };
+
+    return companyProfile;
   } catch (error) {
     return handleApiError(error, 'FMP');
   }

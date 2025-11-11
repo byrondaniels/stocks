@@ -7,6 +7,7 @@ import type {
   OwnershipData,
   FinancialMetrics,
   HistoricalPrices,
+  CompanyProfile,
 } from "./types.js";
 
 type CachedData<T> = {
@@ -18,6 +19,7 @@ export const priceCache = new Map<string, CachedData<StockPrice>>();
 export const ownershipCache = new Map<string, CachedData<OwnershipData>>();
 export const financialsCache = new Map<string, CachedData<FinancialMetrics>>();
 export const historicalCache = new Map<string, CachedData<HistoricalPrices>>();
+export const profileCache = new Map<string, CachedData<CompanyProfile>>();
 
 export function isCacheValid<T>(cached: CachedData<T> | undefined, ttl: number): boolean {
   if (!cached) return false;
@@ -37,5 +39,6 @@ export function clearAllCaches(): void {
   ownershipCache.clear();
   financialsCache.clear();
   historicalCache.clear();
+  profileCache.clear();
   console.log('[StockData] All caches cleared');
 }
