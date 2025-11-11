@@ -9,6 +9,7 @@ import { HTTP_STATUS, ERROR_MESSAGES } from "../constants.js";
 import { handleApiError } from "../utils/errorHandler.js";
 import { getCurrentPrice } from "../services/stockData.js";
 import { fetchAndStoreHistoricalPrices, calculateMovingAverage } from "../services/priceHistory.js";
+import { checkHindenburgOmenWithMarketData } from "../services/hindenburgOmen.js";
 
 const router = Router();
 
@@ -75,6 +76,58 @@ router.get("/extension-meter", async (req: Request, res: ExpressResponse) => {
     res.json({ success: true, data: extensionData });
   } catch (error) {
     console.error("Extension meter error:", error);
+    handleApiError(res, error, ERROR_MESSAGES.STOCK_DATA_ERROR);
+  }
+});
+
+/**
+ * GET /api/market-health/hindenburg-omen
+ * Check for Hindenburg Omen signal
+ *
+ * Query parameters:
+ * - newHighs: Number of new 52-week highs (optional)
+ * - newLows: Number of new 52-week lows (optional)
+ * - issuesTraded: Total number of issues traded (default: 3000)
+ * - date: Date to check (ISO format, optional, defaults to today)
+ */
+router.get("/hindenburg-omen", async (req: Request, res: ExpressResponse) => {
+  try {
+    // Ensure we have historical data for SPY
+    await fetchAndStoreHistoricalPrices('SPY', 60);
+
+    // Get query parameters
+    const newHighsParam = req.query.newHighs as string | undefined;
+    const newLowsParam = req.query.newLows as string | undefined;
+    const issuesTradedParam = req.query.issuesTraded as string | undefined;
+    const dateParam = req.query.date as string | undefined;
+
+    // If no highs/lows provided, fetch current market health data
+    let newHighs: number;
+    let newLows: number;
+
+    if (!newHighsParam || !newLowsParam) {
+      const healthData = await getMarketHealthData();
+      newHighs = healthData.breadth.newHighs;
+      newLows = healthData.breadth.newLows;
+    } else {
+      newHighs = parseInt(newHighsParam);
+      newLows = parseInt(newLowsParam);
+    }
+
+    const issuesTraded = issuesTradedParam ? parseInt(issuesTradedParam) : 3000;
+    const date = dateParam ? new Date(dateParam) : undefined;
+
+    // Check Hindenburg Omen
+    const omenResult = await checkHindenburgOmenWithMarketData(
+      newHighs,
+      newLows,
+      issuesTraded,
+      date
+    );
+
+    res.json({ success: true, data: omenResult });
+  } catch (error) {
+    console.error("Hindenburg Omen error:", error);
     handleApiError(res, error, ERROR_MESSAGES.STOCK_DATA_ERROR);
   }
 });
