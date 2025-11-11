@@ -57,6 +57,19 @@ export type HistoricalPrices = {
   timestamp: string;
 };
 
+export type VolumeAnalysis = {
+  ticker: string;
+  date: string;
+  totalVolume: number;
+  upVolume: number;
+  downVolume: number;
+  upVolumePercent: number;
+  downVolumePercent: number;
+  netVolume: number;
+  upDownRatio: number;
+  daysAnalyzed: number;
+};
+
 export type ApiError = {
   message: string;
   code: 'RATE_LIMIT' | 'NOT_FOUND' | 'API_ERROR' | 'NETWORK_ERROR' | 'INVALID_KEY';
