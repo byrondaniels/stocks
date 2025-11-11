@@ -25,7 +25,11 @@ export function AddStockForm({ onAdd, loading }: AddStockFormProps) {
 
   // Load recent searches on mount
   useEffect(() => {
-    setRecentSearches(getRecentSearches());
+    const loadRecentSearches = async () => {
+      const searches = await getRecentSearches();
+      setRecentSearches(searches);
+    };
+    loadRecentSearches();
   }, []);
 
   // Handle clicks outside the dropdown to close it
@@ -112,7 +116,8 @@ export function AddStockForm({ onAdd, loading }: AddStockFormProps) {
       setErrors({});
 
       // Refresh recent searches list
-      setRecentSearches(getRecentSearches());
+      const searches = await getRecentSearches();
+      setRecentSearches(searches);
     } catch {
       // Error handling is done in parent component
     }

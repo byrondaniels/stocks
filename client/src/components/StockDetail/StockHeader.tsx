@@ -5,6 +5,7 @@ interface StockHeaderProps {
   currentPrice?: number;
   profitLoss?: number;
   profitLossPercent?: number;
+  companyName?: string;
 }
 
 /**
@@ -26,8 +27,9 @@ interface StockHeaderProps {
  * />
  * ```
  */
-export function StockHeader({ ticker, currentPrice, profitLoss, profitLossPercent }: StockHeaderProps) {
+export function StockHeader({ ticker, currentPrice, profitLoss, profitLossPercent, companyName }: StockHeaderProps) {
   const isProfitable = profitLoss !== undefined && profitLoss >= 0;
+  const hasPortfolioData = profitLoss !== undefined || profitLossPercent !== undefined;
 
   const formatPercent = (value: number | undefined | null) => {
     if (value === undefined || value === null) return '-';
@@ -38,15 +40,18 @@ export function StockHeader({ ticker, currentPrice, profitLoss, profitLossPercen
     <div className="stock-header">
       <div className="header-main">
         <h1 className="ticker-symbol">{ticker}</h1>
+        {companyName && <div className="company-name">{companyName}</div>}
         <div className="current-price">
           {formatCurrency(currentPrice)}
         </div>
       </div>
-      <div className="header-secondary">
-        <span className={`price-change ${isProfitable ? 'profit' : 'loss'}`}>
-          {formatCurrency(profitLoss)} ({formatPercent(profitLossPercent)})
-        </span>
-      </div>
+      {hasPortfolioData && (
+        <div className="header-secondary">
+          <span className={`price-change ${isProfitable ? 'profit' : 'loss'}`}>
+            {formatCurrency(profitLoss)} ({formatPercent(profitLossPercent)})
+          </span>
+        </div>
+      )}
     </div>
   );
 }

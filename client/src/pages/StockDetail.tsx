@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PriceLineChart } from '../components/PriceLineChart';
 import { InsiderData, OwnershipData, MovingAverageData, PriceHistoryPoint } from '../types';
-import OwnershipPieChart from '../components/OwnershipPieChart';
-import { CANSLIMScore as CANSLIMScoreComponent } from '../components/CANSLIMScore';
-import { RSIndicator } from '../components/RSIndicator';
 import { HISTORICAL_DAYS_DEFAULT } from '../constants';
 import {
   StockHeader,
@@ -12,9 +8,8 @@ import {
   StockEditForm,
   DeleteConfirmation,
   PositionDetails,
-  MovingAverageSection,
-  InsiderActivitySection,
 } from '../components/StockDetail';
+import { StockDataSections } from '../components/StockDataSections';
 import './StockDetail.css';
 
 interface StockDetailData {
@@ -307,7 +302,8 @@ export function StockDetail() {
         />
       )}
 
-      <div className="stock-detail">
+      {/* Portfolio-specific position details */}
+      <div className="portfolio-sections">
         <PositionDetails
           shares={stock.shares}
           purchasePrice={stock.purchasePrice}
@@ -317,52 +313,20 @@ export function StockDetail() {
           profitLossPercent={stock.profitLossPercent}
           lastUpdated={stock.lastUpdated}
         />
-
-        {/* Price History Chart */}
-        <div className="price-history-section">
-          {loadingPriceHistory ? (
-            <div className="loading-state">Loading price history...</div>
-          ) : priceHistory.length > 0 ? (
-            <PriceLineChart
-              data={priceHistory}
-              ticker={stock.ticker}
-            />
-          ) : (
-            <div className="no-data">Price history not available for this ticker.</div>
-          )}
-        </div>
-
-        {/* Ownership Distribution Section */}
-        <div className="section-divider"></div>
-        <h2>Ownership Distribution</h2>
-        <div className="ownership-section">
-          {loadingOwnership ? (
-            <div className="loading-state">Loading ownership data...</div>
-          ) : ownershipData ? (
-            <OwnershipPieChart ownershipData={ownershipData} />
-          ) : (
-            <div className="no-data">Ownership data not available for this ticker.</div>
-          )}
-        </div>
-
-        {/* CANSLIM Score Section */}
-        <div className="section-divider"></div>
-        <h2>CANSLIM Analysis</h2>
-        <div className="canslim-section">
-          <CANSLIMScoreComponent ticker={stock.ticker} />
-        </div>
-
-        {/* RS Rating Section */}
-        <div className="section-divider"></div>
-        <h2>Relative Strength</h2>
-        <div className="rs-section">
-          <RSIndicator ticker={stock.ticker} />
-        </div>
-
-        <MovingAverageSection loading={loadingMA} data={movingAverageData} />
-
-        <InsiderActivitySection loading={loadingInsiders} data={insiderData} />
       </div>
+
+      {/* Shared stock data sections */}
+      <StockDataSections
+        ticker={stock.ticker}
+        priceHistory={priceHistory}
+        loadingPriceHistory={loadingPriceHistory}
+        ownershipData={ownershipData}
+        loadingOwnership={loadingOwnership}
+        movingAverageData={movingAverageData}
+        loadingMA={loadingMA}
+        insiderData={insiderData}
+        loadingInsiders={loadingInsiders}
+      />
     </div>
   );
 }

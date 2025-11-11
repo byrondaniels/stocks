@@ -1,7 +1,8 @@
-import { FormEvent, useState } from 'react';
-import { AddWatchlistFormData } from '../types';
+import { FormEvent, useState, useEffect, useRef } from 'react';
+import { AddWatchlistFormData, RecentlySearchedStock } from '../types';
 import { normalizeTicker } from '../../../shared/validation';
 import { useTickerValidation } from '../hooks/useTickerValidation';
+import { getRecentSearches } from '../utils/recentSearches';
 
 interface AddWatchlistFormProps {
   onAdd: (data: AddWatchlistFormData) => Promise<void>;
@@ -14,7 +15,39 @@ export function AddWatchlistForm({ onAdd, loading }: AddWatchlistFormProps) {
     notes: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof AddWatchlistFormData, string>>>({});
+  const [recentSearches, setRecentSearches] = useState<RecentlySearchedStock[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { validateTicker } = useTickerValidation();
+
+  // Load recent searches on mount
+  useEffect(() => {
+    const loadRecentSearches = async () => {
+      const searches = await getRecentSearches();
+      setRecentSearches(searches);
+    };
+    loadRecentSearches();
+  }, []);
+
+  // Handle clicks outside the dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof AddWatchlistFormData, string>> = {};
@@ -48,6 +81,10 @@ export function AddWatchlistForm({ onAdd, loading }: AddWatchlistFormProps) {
         notes: '',
       });
       setErrors({});
+
+      // Refresh recent searches list
+      const searches = await getRecentSearches();
+      setRecentSearches(searches);
     } catch {
       // Error handling is done in parent component
     }
@@ -65,23 +102,61 @@ export function AddWatchlistForm({ onAdd, loading }: AddWatchlistFormProps) {
     }
   };
 
+  const handleTickerFocus = () => {
+    if (recentSearches.length > 0) {
+      setShowDropdown(true);
+    }
+  };
+
+  const handleRecentSearchClick = (ticker: string) => {
+    setFormData((prev) => ({ ...prev, ticker }));
+    setShowDropdown(false);
+    // Clear ticker error if present
+    if (errors.ticker) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.ticker;
+        return newErrors;
+      });
+    }
+  };
+
   return (
     <div className="add-stock-form-container">
       <h2>Add Stock to Watchlist</h2>
       <form onSubmit={handleSubmit} className="add-stock-form">
         <div className="form-row">
-          <div className="form-group">
+          <div className="form-group ticker-input-container">
             <label htmlFor="ticker">Ticker Symbol</label>
             <input
+              ref={inputRef}
               id="ticker"
               type="text"
               value={formData.ticker}
               onChange={(e) => handleChange('ticker', e.target.value)}
+              onFocus={handleTickerFocus}
               placeholder="e.g., AAPL"
               disabled={loading}
               className={errors.ticker ? 'error' : ''}
+              autoComplete="off"
             />
             {errors.ticker && <span className="error-message">{errors.ticker}</span>}
+
+            {showDropdown && recentSearches.length > 0 && (
+              <div ref={dropdownRef} className="recent-searches-dropdown">
+                <div className="dropdown-header">Recently Searched</div>
+                {recentSearches.map((stock) => (
+                  <div
+                    key={stock.ticker}
+                    className="recent-search-item"
+                    onClick={() => handleRecentSearchClick(stock.ticker)}
+                  >
+                    <span className="ticker">{stock.ticker}</span>
+                    <span className="company-name">{stock.companyName}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="form-group">

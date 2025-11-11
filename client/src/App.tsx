@@ -3,12 +3,13 @@
  * Handles routing and navigation
  */
 
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Portfolio } from './pages/Portfolio';
 import { Watchlist } from './pages/Watchlist';
-import { InsiderLookup } from './pages/InsiderLookup';
 import { StockDetail } from './pages/StockDetail';
+import { Explore } from './pages/Explore';
+import { HeaderStockSearch } from './components/HeaderStockSearch';
 import './App.css';
 
 function Navigation() {
@@ -18,6 +19,11 @@ function Navigation() {
     <nav className="main-nav">
       <div className="nav-container">
         <div className="nav-brand">Stock Portfolio</div>
+        
+        <div className="nav-center">
+          <HeaderStockSearch />
+        </div>
+
         <div className="nav-links">
           <Link
             to="/portfolio"
@@ -30,12 +36,6 @@ function Navigation() {
             className={location.pathname === '/watchlist' ? 'active' : ''}
           >
             Watchlist
-          </Link>
-          <Link
-            to="/insiders"
-            className={location.pathname === '/insiders' ? 'active' : ''}
-          >
-            Insider Lookup
           </Link>
         </div>
       </div>
@@ -54,8 +54,8 @@ function App() {
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/stock/:ticker" element={<StockDetail />} />
-            <Route path="/insiders" element={<InsiderLookup />} />
-            <Route path="/insider/:ticker" element={<InsiderLookup />} />
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/explore/:ticker" element={<Explore />} />
           </Routes>
         </main>
         <Toaster

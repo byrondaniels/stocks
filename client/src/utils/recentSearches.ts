@@ -1,22 +1,28 @@
 /**
- * Utilities for managing recently searched stocks in localStorage
+ * Utilities for managing recently searched stocks using MongoDB API
  */
 
 import { RecentlySearchedStock } from '../types';
 
-const STORAGE_KEY = 'recentlySearchedStocks';
-const MAX_RECENT_SEARCHES = 5;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const MAX_RECENT_SEARCHES = 10;
 
 /**
- * Get all recently searched stocks from localStorage
+ * Get all recently searched stocks from MongoDB API
  */
-export function getRecentSearches(): RecentlySearchedStock[] {
+export async function getRecentSearches(): Promise<RecentlySearchedStock[]> {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
+    const response = await fetch(`${API_BASE}/api/search/recent?limit=${MAX_RECENT_SEARCHES}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch recent searches: ${response.status}`);
+    }
 
-    const parsed = JSON.parse(stored) as RecentlySearchedStock[];
-    return parsed.sort((a, b) => b.timestamp - a.timestamp);
+    const data = await response.json();
+    return data.searches.map((search: any) => ({
+      ticker: search.ticker,
+      companyName: search.companyName || search.ticker,
+      timestamp: new Date(search.searchedAt).getTime(),
+    }));
   } catch (error) {
     console.error('Error loading recent searches:', error);
     return [];
@@ -24,30 +30,25 @@ export function getRecentSearches(): RecentlySearchedStock[] {
 }
 
 /**
- * Add a stock to recently searched list
- * If the stock already exists, update its timestamp
- * Keep only the most recent MAX_RECENT_SEARCHES items
+ * Add a stock to recently searched list via MongoDB API
+ * The server handles deduplication and cleanup
  */
-export function addRecentSearch(ticker: string, companyName: string): void {
+export async function addRecentSearch(ticker: string, companyName: string): Promise<void> {
   try {
-    const existing = getRecentSearches();
-
-    // Remove existing entry for this ticker (if any)
-    const filtered = existing.filter(
-      item => item.ticker.toUpperCase() !== ticker.toUpperCase()
-    );
-
-    // Add new entry at the beginning
-    const updated: RecentlySearchedStock[] = [
-      {
+    const response = await fetch(`${API_BASE}/api/search/history`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         ticker: ticker.toUpperCase(),
         companyName,
-        timestamp: Date.now()
-      },
-      ...filtered
-    ].slice(0, MAX_RECENT_SEARCHES);
+      }),
+    });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    if (!response.ok) {
+      throw new Error(`Failed to save search: ${response.status}`);
+    }
   } catch (error) {
     console.error('Error saving recent search:', error);
   }
@@ -55,11 +56,10 @@ export function addRecentSearch(ticker: string, companyName: string): void {
 
 /**
  * Clear all recently searched stocks
+ * Note: This would need a server endpoint to clear all searches
+ * For now, this is a no-op as we typically don't want to delete search history
  */
 export function clearRecentSearches(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (error) {
-    console.error('Error clearing recent searches:', error);
-  }
+  console.warn('Clear recent searches not implemented for MongoDB storage');
+  // Could implement DELETE /api/search/history if needed
 }
