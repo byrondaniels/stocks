@@ -6,3 +6,4 @@
 export { Portfolio } from './Portfolio';
 export { Watchlist } from './Watchlist';
 export { StockDetail } from './StockDetail';
+export { Explore } from './Explore';
