@@ -11,19 +11,19 @@ import { Watchlist } from './pages/Watchlist';
 import { StockDetail } from './pages/StockDetail';
 import { Explore } from './pages/Explore';
 import { MarketHealth } from './pages/MarketHealth';
+import { SpinoffAnalysisPage } from './pages/SpinoffAnalysisPage';
 import { HeaderStockSearch } from './components/HeaderStockSearch';
-import { JoelGreenblatMenu } from './components/JoelGreenblatMenu';
 import './App.css';
 
 function Navigation() {
   const location = useLocation();
-  const [isSpinoffModalOpen, setIsSpinoffModalOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   return (
     <nav className="main-nav">
       <div className="nav-container">
         <div className="nav-brand">Stock Portfolio</div>
-        
+
         <div className="nav-center">
           <HeaderStockSearch />
         </div>
@@ -47,20 +47,28 @@ function Navigation() {
           >
             Market Health
           </Link>
-          <button
-            className="nav-button"
-            onClick={() => setIsSpinoffModalOpen(true)}
-          >
-            📚 Joel Greenblatt
-          </button>
+          <div className="nav-dropdown">
+            <button
+              className="nav-button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            >
+              📚 Joel Greenblatt
+              <span className={`dropdown-arrow ${isDropdownOpen ? 'open' : ''}`}>▼</span>
+            </button>
+            {isDropdownOpen && (
+              <div className="dropdown-menu">
+                <Link
+                  to="/spinoff-analysis"
+                  className="dropdown-item"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  🔄 Spinoff Analysis
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Spinoff Analysis Modal */}
-      <JoelGreenblatMenu
-        isOpen={isSpinoffModalOpen}
-        onClose={() => setIsSpinoffModalOpen(false)}
-      />
     </nav>
   );
 }
@@ -79,6 +87,7 @@ function App() {
             <Route path="/explore" element={<Explore />} />
             <Route path="/explore/:ticker" element={<Explore />} />
             <Route path="/market-health" element={<MarketHealth />} />
+            <Route path="/spinoff-analysis" element={<SpinoffAnalysisPage />} />
           </Routes>
         </main>
         <Toaster
