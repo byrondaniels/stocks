@@ -89,6 +89,53 @@
   font-size: 16px;
 }
 
+.sector-rank-info {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.rank-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.rank-badge.rank-excellent {
+  background: rgba(16, 185, 129, 0.9);
+  color: white;
+}
+
+.rank-badge.rank-good {
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+}
+
+.rank-badge.rank-average {
+  background: rgba(251, 191, 36, 0.9);
+  color: white;
+}
+
+.rank-badge.rank-below {
+  background: rgba(249, 115, 22, 0.9);
+  color: white;
+}
+
+.rank-badge.rank-poor {
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+}
+
+.rank-label {
+  font-size: 13px;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
 /* RS Content */
 .rs-content {
   display: flex;

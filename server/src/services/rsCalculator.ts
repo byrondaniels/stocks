@@ -4,6 +4,7 @@ import {
 import { StockMetrics } from '../db/models';
 import { getETFForStock, getETFMatchDescription } from './stock-data/sector-etf-map.js';
 import { getSectorIndustryWithGemini } from './gemini.js';
+import { getSectorGroupRanking } from './sectorGroupRankings.js';
 
 /**
  * Relative Strength Rating - New Methodology
@@ -16,6 +17,8 @@ export interface RSRating {
   sectorETF: string | null; // Which ETF was used, or null if fallback to SPY
   sector: string | null; // The stock's sector
   industry: string | null; // The stock's industry
+  sectorRank?: number | null; // Rank of the sector among all sectors (1 = strongest)
+  sectorTotalGroups?: number | null; // Total number of groups being ranked
   calculatedAt: Date;
 }
 
@@ -164,6 +167,26 @@ export async function calculateRSRating(ticker: string): Promise<RSRating> {
       industryETF = null; // Clear ETF since we're not using it
     }
 
+    // Get sector ranking if we have an ETF
+    let sectorRank: number | null = null;
+    let sectorTotalGroups: number | null = null;
+
+    if (industryETF) {
+      try {
+        const sectorRanking = await getSectorGroupRanking(industryETF);
+        if (sectorRanking) {
+          sectorRank = sectorRanking.rank;
+          // Get total groups from the rankings (we'll need to fetch it)
+          const { getOrCalculateSectorGroupRankings } = await import('./sectorGroupRankings.js');
+          const rankings = await getOrCalculateSectorGroupRankings();
+          sectorTotalGroups = rankings.totalGroups;
+          console.log(`[RS] ${normalizedTicker} - Sector ${industryETF} ranks #${sectorRank} of ${sectorTotalGroups}`);
+        }
+      } catch (error) {
+        console.warn(`[RS] ${normalizedTicker} - Could not fetch sector ranking:`, error);
+      }
+    }
+
     const rsRating: RSRating = {
       ticker: normalizedTicker,
       sectorRS,
@@ -171,6 +194,8 @@ export async function calculateRSRating(ticker: string): Promise<RSRating> {
       sectorETF: industryETF,
       sector,
       industry,
+      sectorRank,
+      sectorTotalGroups,
       calculatedAt: new Date()
     };
 
