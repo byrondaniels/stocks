@@ -33,7 +33,7 @@ import { getRateLimitStatus as getRateLimitStatusInternal } from "./rate-limiter
 import { fetchAlphaVantageQuote, fetchAlphaVantageHistorical } from "./alpha-vantage.js";
 import { fetchFMPQuote } from "./fmp.js";
 
-import type { StockPrice, OwnershipData, FinancialMetrics, HistoricalPrices } from "./types.js";
+import type { StockPrice, OwnershipData, FinancialMetrics, HistoricalPrices, VolumeAnalysis } from "./types.js";
 
 /**
  * Get current stock price for a ticker
@@ -172,6 +172,71 @@ export async function getHistoricalPrices(
   const historical = await fetchAlphaVantageHistorical(normalizedTicker, days);
   setCache(historicalCache, cacheKey, historical);
   return historical;
+}
+
+/**
+ * Calculate volume analysis for IBD Up/Down Volume Ratio
+ * Analyzes the past 50 trading days (or fewer if less data available)
+ * Cached for 1 hour
+ */
+export async function getVolumeAnalysis(ticker: string): Promise<VolumeAnalysis> {
+  const normalizedTicker = ticker.toUpperCase();
+  const days = 51; // Need 51 days to calculate 50 up/down days (need previous close for comparison)
+
+  // Get historical data (uses existing cache mechanism)
+  const historical = await getHistoricalPrices(normalizedTicker, days);
+
+  if (!historical.prices || historical.prices.length < 2) {
+    throw new Error('Insufficient historical data for volume analysis');
+  }
+
+  // Sort by date ascending to ensure chronological order
+  const sortedPrices = [...historical.prices].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  let upVolume = 0;
+  let downVolume = 0;
+  let daysAnalyzed = 0;
+
+  // Start from index 1 since we need previous day's close for comparison
+  for (let i = 1; i < sortedPrices.length; i++) {
+    const currentDay = sortedPrices[i];
+    const previousDay = sortedPrices[i - 1];
+
+    if (currentDay.close > previousDay.close) {
+      // Up day: closing price higher than previous close
+      upVolume += currentDay.volume;
+      daysAnalyzed++;
+    } else if (currentDay.close < previousDay.close) {
+      // Down day: closing price lower than previous close
+      downVolume += currentDay.volume;
+      daysAnalyzed++;
+    }
+    // If close === previousClose, we don't count it as up or down
+  }
+
+  const totalVolume = upVolume + downVolume;
+  const upVolumePercent = totalVolume > 0 ? Math.round((upVolume / totalVolume) * 100) : 0;
+  const downVolumePercent = totalVolume > 0 ? Math.round((downVolume / totalVolume) * 100) : 0;
+  const netVolume = upVolume - downVolume;
+  const upDownRatio = downVolume > 0 ? parseFloat((upVolume / downVolume).toFixed(2)) : 0;
+
+  // Get the most recent date
+  const mostRecentDate = sortedPrices[sortedPrices.length - 1].date;
+
+  return {
+    ticker: normalizedTicker,
+    date: mostRecentDate,
+    totalVolume,
+    upVolume,
+    downVolume,
+    upVolumePercent,
+    downVolumePercent,
+    netVolume,
+    upDownRatio,
+    daysAnalyzed,
+  };
 }
 
 /**
