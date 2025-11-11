@@ -1,0 +1,81 @@
+{
+  "mcpServers": {
+    "sec-edgar": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sec-edgar"],
+      "description": "SEC EDGAR filing and financial data access",
+      "tools": [
+        {
+          "name": "search_company",
+          "description": "Search for company by name or ticker to get CIK number",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Company name or ticker symbol"
+              }
+            },
+            "required": ["query"]
+          }
+        },
+        {
+          "name": "get_filings",
+          "description": "Get list of SEC filings for a company",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "cik": {
+                "type": "string",
+                "description": "Company CIK number"
+              },
+              "formType": {
+                "type": "string",
+                "description": "Form type (10-K, 8-K, 10, etc.)"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Number of filings to retrieve"
+              }
+            },
+            "required": ["cik"]
+          }
+        },
+        {
+          "name": "get_financial_statements",
+          "description": "Extract financial statement data from XBRL filings",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "cik": {
+                "type": "string",
+                "description": "Company CIK number"
+              },
+              "accessionNumber": {
+                "type": "string",
+                "description": "Filing accession number"
+              }
+            },
+            "required": ["cik", "accessionNumber"]
+          }
+        },
+        {
+          "name": "get_company_facts",
+          "description": "Get standardized company facts from SEC data",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "cik": {
+                "type": "string",
+                "description": "Company CIK number"
+              }
+            },
+            "required": ["cik"]
+          }
+        }
+      ]
+    }
+  },
+  "version": "1.0.0",
+  "description": "MCP configuration for stock analysis with SEC EDGAR integration"
+}

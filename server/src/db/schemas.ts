@@ -267,3 +267,64 @@ SECCompanyTickerSchema.index({ fetchedAt: -1 });
 
 // TTL index - automatically delete documents after 30 days
 SECCompanyTickerSchema.index({ fetchedAt: 1 }, { expireAfterSeconds: 2592000 });
+
+/**
+ * Search History Collection Schema
+ * Stores user search history
+ */
+export const SearchHistorySchema = new Schema(
+  {
+    ticker: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+    },
+    searchedAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: false,
+  }
+);
+
+// Index for efficient queries
+SearchHistorySchema.index({ ticker: 1 });
+SearchHistorySchema.index({ searchedAt: -1 });
+
+/**
+ * Spinoff Analysis Collection Schema
+ * Stores cached spinoff analysis results
+ */
+export const SpinoffAnalysisSchema = new Schema(
+  {
+    ticker: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+    },
+    analysis: {
+      type: Schema.Types.Mixed, // Stores complete SpinoffAnalysis object
+      required: true,
+    },
+    timestamp: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: false,
+  }
+);
+
+// Index for efficient queries
+SpinoffAnalysisSchema.index({ ticker: 1 });
+SpinoffAnalysisSchema.index({ timestamp: -1 });
+
+// TTL index - automatically delete documents after 7 days (spinoff data ages quickly)
+SpinoffAnalysisSchema.index({ timestamp: 1 }, { expireAfterSeconds: 604800 });

@@ -227,3 +227,69 @@ export interface MarketHealthData {
     };
   };
 }
+
+// Spinoff Analysis Types
+
+export interface ScreeningCriterion {
+  name: string;
+  status: 'PASS' | 'FAIL';
+  details: string;
+}
+
+export interface Phase1Screening {
+  passed: boolean;
+  criteria: ScreeningCriterion[];
+}
+
+export interface QualityMetric {
+  score: number; // 1-5
+  weight: number; // decimal weight
+  explanation: string;
+}
+
+export interface Phase2Quality {
+  competitive_position: QualityMetric;
+  revenue_quality: QualityMetric;
+  profitability: QualityMetric;
+  management: QualityMetric;
+  strategic_value: QualityMetric;
+  weighted_average: number;
+}
+
+export interface ValuationMetric {
+  name: string;
+  value: string;
+  threshold: string;
+  meets_threshold: boolean;
+  calculation: string;
+}
+
+export interface Phase3Valuation {
+  metrics: ValuationMetric[];
+}
+
+export interface DataSource {
+  name: string;
+  url: string;
+}
+
+export interface ExecutiveSummary {
+  overall_score: number;
+  recommendation: 'BUY' | 'PASS' | 'AVOID';
+  position_size: string;
+  key_thesis: string;
+}
+
+export interface SpinoffAnalysis {
+  company_name: string;
+  ticker: string;
+  analysis_date: string;
+  executive_summary: ExecutiveSummary;
+  phase1_screening: Phase1Screening;
+  phase2_quality: Phase2Quality;
+  phase3_valuation: Phase3Valuation;
+  phase4_catalysts: string[];
+  red_flags: string[];
+  sources: DataSource[];
+  detailed_analysis: string;
+}
