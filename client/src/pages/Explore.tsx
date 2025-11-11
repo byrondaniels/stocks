@@ -201,6 +201,14 @@ export function Explore() {
     await handleSearch();
   };
 
+  if (loading) {
+    return (
+      <div className="app">
+        <div className="loading-state">Loading stock details...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="explore-header">

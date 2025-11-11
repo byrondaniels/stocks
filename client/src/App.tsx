@@ -3,12 +3,13 @@
  * Handles routing and navigation
  */
 
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Portfolio } from './pages/Portfolio';
 import { Watchlist } from './pages/Watchlist';
 import { StockDetail } from './pages/StockDetail';
 import { Explore } from './pages/Explore';
+import { HeaderStockSearch } from './components/HeaderStockSearch';
 import './App.css';
 
 function Navigation() {
@@ -18,6 +19,11 @@ function Navigation() {
     <nav className="main-nav">
       <div className="nav-container">
         <div className="nav-brand">Stock Portfolio</div>
+        
+        <div className="nav-center">
+          <HeaderStockSearch />
+        </div>
+
         <div className="nav-links">
           <Link
             to="/portfolio"
@@ -30,12 +36,6 @@ function Navigation() {
             className={location.pathname === '/watchlist' ? 'active' : ''}
           >
             Watchlist
-          </Link>
-          <Link
-            to="/explore"
-            className={location.pathname === '/explore' || location.pathname.startsWith('/explore/') ? 'active' : ''}
-          >
-            Explore
           </Link>
         </div>
       </div>
