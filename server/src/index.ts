@@ -6,15 +6,16 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
-import { connectToDatabase } from "./db/index.js";
+import { connectToDatabase } from "./db/index.ts";
 
 // Import routes
-import insiderRoutes from "./routes/insider.routes.js";
-import portfolioRoutes from "./routes/portfolio.routes.js";
-import watchlistRoutes from "./routes/watchlist.routes.js";
-import stockDataRoutes from "./routes/stock-data.routes.js";
-import canslimRoutes from "./routes/canslim.routes.js";
-import rsRoutes from "./routes/rs.routes.js";
+import insiderRoutes from "./routes/insider.routes.ts";
+import portfolioRoutes from "./routes/portfolio.routes.ts";
+import watchlistRoutes from "./routes/watchlist.routes.ts";
+import stockDataRoutes from "./routes/stock-data.routes.ts";
+import canslimRoutes from "./routes/canslim.routes.ts";
+import rsRoutes from "./routes/rs.routes.ts";
+import searchRoutes from "./routes/search.routes.ts";
 
 const PORT = process.env.PORT || 3001;
 
@@ -31,6 +32,7 @@ app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/stock", stockDataRoutes);
 app.use("/api/canslim", canslimRoutes);
 app.use("/api/rs", rsRoutes);
+app.use("/api/search", searchRoutes);
 
 // Connect to MongoDB and start server
 connectToDatabase()
@@ -44,6 +46,7 @@ connectToDatabase()
       console.log(`  - /api/stock          - Stock data & prices`);
       console.log(`  - /api/canslim        - CANSLIM scoring`);
       console.log(`  - /api/rs             - RS Rating (Relative Strength)`);
+      console.log(`  - /api/search         - Search history`);
     });
   })
   .catch((error) => {

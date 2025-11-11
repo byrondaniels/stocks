@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { formatCurrency, formatShares } from "../utils/formatters";
 import { TICKER_REGEX, normalizeTicker } from "../../../shared/validation";
 import { TICKER_MAX_LENGTH } from "../constants";
+import { addRecentSearch } from "../utils/recentSearches";
 
 type InsiderResponse = {
   ticker: string;
@@ -106,6 +107,21 @@ export function InsiderLookup() {
           }
           const payload = (await response.json()) as InsiderResponse;
           setResult(payload);
+
+          // Save to recent searches
+          try {
+            const companyNameResponse = await fetch(`/api/stock/company-name?ticker=${encodeURIComponent(trimmed)}`);
+            if (companyNameResponse.ok) {
+              const data = await companyNameResponse.json();
+              await addRecentSearch(trimmed, data.companyName);
+            } else {
+              // Save with just ticker if company name not available
+              await addRecentSearch(trimmed, trimmed);
+            }
+          } catch (err) {
+            // Silently fail - recent searches is not critical
+            console.warn('Failed to save search to history:', err);
+          }
         } catch (fetchError) {
           setError(fetchError instanceof Error ? fetchError.message : "Unexpected error while loading data.");
         } finally {
@@ -147,6 +163,21 @@ export function InsiderLookup() {
       }
       const payload = (await response.json()) as InsiderResponse;
       setResult(payload);
+
+      // Save to recent searches
+      try {
+        const companyNameResponse = await fetch(`/api/stock/company-name?ticker=${encodeURIComponent(trimmed)}`);
+        if (companyNameResponse.ok) {
+          const data = await companyNameResponse.json();
+          await addRecentSearch(trimmed, data.companyName);
+        } else {
+          // Save with just ticker if company name not available
+          await addRecentSearch(trimmed, trimmed);
+        }
+      } catch (err) {
+        // Silently fail - recent searches is not critical
+        console.warn('Failed to save search to history:', err);
+      }
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Unexpected error while loading data.");
     } finally {

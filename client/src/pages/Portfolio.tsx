@@ -94,7 +94,7 @@ export function Portfolio() {
         const companyNameResponse = await fetch(`/api/stock/company-name?ticker=${encodeURIComponent(formData.ticker)}`);
         if (companyNameResponse.ok) {
           const data = await companyNameResponse.json();
-          addRecentSearch(formData.ticker, data.companyName);
+          await addRecentSearch(formData.ticker, data.companyName);
         }
       } catch (err) {
         // Silently fail - recent searches is not critical

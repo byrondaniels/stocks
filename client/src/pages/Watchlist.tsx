@@ -7,6 +7,7 @@ import { StockCard } from '../components/StockCard';
 import { DeleteConfirmation } from '../components/DeleteConfirmation';
 import { RefreshButton } from '../components/RefreshButton';
 import { useRefreshRateLimit } from '../hooks/useRefreshRateLimit';
+import { addRecentSearch } from '../utils/recentSearches';
 
 export function Watchlist() {
   const navigate = useNavigate();
@@ -62,6 +63,18 @@ export function Watchlist() {
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error ?? `Failed to add stock: ${response.status}`);
+      }
+
+      // Fetch company name and save to recent searches
+      try {
+        const companyNameResponse = await fetch(`/api/stock/company-name?ticker=${encodeURIComponent(formData.ticker)}`);
+        if (companyNameResponse.ok) {
+          const data = await companyNameResponse.json();
+          await addRecentSearch(formData.ticker, data.companyName);
+        }
+      } catch (err) {
+        // Silently fail - recent searches is not critical
+        console.warn('Failed to fetch company name for recent searches:', err);
       }
 
       // Refresh watchlist after adding
