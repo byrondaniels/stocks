@@ -112,9 +112,9 @@ export function Watchlist() {
     }
   };
 
-  // Navigate to stock detail
+  // Navigate to explore view
   const handleStockDetail = (ticker: string) => {
-    navigate(`/stock/${ticker}`);
+    navigate(`/explore/${ticker}`);
   };
 
   // Show delete confirmation
