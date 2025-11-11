@@ -38,7 +38,7 @@ import type { StockPrice, FinancialMetrics, HistoricalPrices, CompanyProfile, Vo
 
 /**
  * Get current stock price for a ticker
- * Uses Alpha Vantage as primary source, FMP as secondary, Yahoo Finance as tertiary fallback
+ * Uses Alpha Vantage as primary source, Yahoo Finance as fallback
  * Cached for 1 hour
  */
 export async function getCurrentPrice(ticker: string): Promise<StockPrice> {
@@ -59,25 +59,16 @@ export async function getCurrentPrice(ticker: string): Promise<StockPrice> {
     setCache(priceCache, normalizedTicker, price);
     return price;
   } catch (error) {
-    console.warn('[StockData] Alpha Vantage failed, trying FMP:', error);
+    console.warn('[StockData] Alpha Vantage failed, trying Yahoo Finance:', error);
 
-    // Fallback to FMP
+    // Fallback to Yahoo Finance
     try {
-      const price = await fetchFMPQuote(normalizedTicker);
+      const price = await fetchYahooQuote(normalizedTicker);
       setCache(priceCache, normalizedTicker, price);
       return price;
-    } catch (fmpError) {
-      console.warn('[StockData] FMP failed, trying Yahoo Finance:', fmpError);
-
-      // Final fallback to Yahoo Finance
-      try {
-        const price = await fetchYahooQuote(normalizedTicker);
-        setCache(priceCache, normalizedTicker, price);
-        return price;
-      } catch (yahooError) {
-        console.error('[StockData] All price sources failed:', yahooError);
-        throw yahooError;
-      }
+    } catch (yahooError) {
+      console.error('[StockData] All price sources failed:', yahooError);
+      throw yahooError;
     }
   }
 }
