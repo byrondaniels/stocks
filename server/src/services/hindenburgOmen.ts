@@ -12,8 +12,6 @@
  */
 
 import { StockPrice } from '../db/index.js';
-import { getCurrentPrice } from './stockData.js';
-import { calculateMovingAverage } from './priceHistory.js';
 
 interface HindenburgOmenResult {
   date: string;

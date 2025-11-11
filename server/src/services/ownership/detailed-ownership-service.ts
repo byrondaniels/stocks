@@ -274,8 +274,8 @@ function createTopHoldersList(
   insiders: InsiderOwner[],
   beneficialOwners: BeneficialOwner[],
   institutionalHolders: InstitutionalHolder[],
-  insiderPercent: number,
-  beneficialPercent: number
+  _insiderPercent: number,
+  _beneficialPercent: number
 ): TopHolder[] {
   const topHolders: TopHolder[] = [];
 

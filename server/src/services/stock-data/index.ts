@@ -30,9 +30,9 @@ import {
 
 import { getRateLimitStatus as getRateLimitStatusInternal } from "./rate-limiter.js";
 
-import { fetchAlphaVantageQuote, fetchAlphaVantageHistorical } from "./alpha-vantage.js";
-import { fetchFMPQuote, fetchFMPProfile } from "./fmp.js";
-import { fetchYahooQuote, fetchYahooHistorical } from "./yahoo-finance.js";
+import { fetchAlphaVantageHistorical } from "./alpha-vantage.js";
+import { fetchFMPProfile } from "./fmp.js";
+import { fetchYahooHistorical } from "./yahoo-finance.js";
 
 import type { StockPrice, FinancialMetrics, HistoricalPrices, CompanyProfile, VolumeAnalysis } from "./types.js";
 import { StockPrice as StockPriceModel } from "../../db/models/StockPrice.model.js";

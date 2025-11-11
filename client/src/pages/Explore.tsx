@@ -3,10 +3,10 @@
  * Allows users to explore stock data without adding to portfolio/watchlist
  */
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { InsiderData, OwnershipData, MovingAverageData, PriceHistoryPoint } from '../types';
-import { HISTORICAL_DAYS_DEFAULT, TICKER_MAX_LENGTH } from '../constants';
+import { HISTORICAL_DAYS_DEFAULT } from '../constants';
 import { TICKER_REGEX, normalizeTicker } from '../../../shared/validation';
 import { addRecentSearch } from '../utils/recentSearches';
 import { StockHeader } from '../components/StockDetail';
@@ -34,7 +34,7 @@ export function Explore() {
   const [loadingPriceHistory, setLoadingPriceHistory] = useState(false);
   const [loadingMA, setLoadingMA] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [, setHasSearched] = useState(false);
 
   // Set page title
   useEffect(() => {
@@ -187,7 +187,7 @@ export function Explore() {
     }
   };
 
-  const handleSearch = async (searchTicker?: string) => {
+  const _handleSearch = async (searchTicker?: string) => {
     const tickerToSearch = searchTicker || ticker;
     const normalizedTicker = normalizeTicker(tickerToSearch);
 
@@ -214,10 +214,6 @@ export function Explore() {
     ]);
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    await handleSearch();
-  };
 
   if (loading) {
     return (

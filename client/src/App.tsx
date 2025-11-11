@@ -3,7 +3,7 @@
  * Handles routing and navigation
  */
 
-import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Portfolio } from './pages/Portfolio';
 import { Watchlist } from './pages/Watchlist';
