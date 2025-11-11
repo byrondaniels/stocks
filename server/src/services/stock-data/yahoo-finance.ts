@@ -7,12 +7,15 @@
 import yahooFinance from 'yahoo-finance2';
 import type { StockPrice, HistoricalPrice, HistoricalPrices, ApiError } from "./types.js";
 
+// Initialize YahooFinance instance (for v2.11+ compatibility)
+const yf = new yahooFinance();
+
 /**
  * Fetch current quote from Yahoo Finance
  */
 export async function fetchYahooQuote(ticker: string): Promise<StockPrice> {
   try {
-    const quote: any = await yahooFinance.quote(ticker);
+    const quote: any = await yf.quote(ticker);
 
     if (!quote || !quote.regularMarketPrice) {
       throw new Error('Ticker not found or no data available');
@@ -50,7 +53,7 @@ export async function fetchYahooHistorical(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const result: any = await yahooFinance.historical(ticker, {
+    const result: any = await yf.historical(ticker, {
       period1: startDate,
       period2: endDate,
       interval: '1d',

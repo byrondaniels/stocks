@@ -41,16 +41,27 @@ export function Explore() {
     document.title = 'Explore Stocks - Stock Portfolio';
   }, []);
 
-  // Handle URL ticker parameter
+  // Handle URL ticker parameter changes
   useEffect(() => {
-    if (urlTicker && !hasSearched) {
+    if (urlTicker) {
       const normalizedTicker = normalizeTicker(urlTicker);
       if (TICKER_REGEX.test(normalizedTicker)) {
         setTicker(normalizedTicker);
-        handleSearch(normalizedTicker);
+        // Reset hasSearched and trigger data fetch when URL changes
+        setHasSearched(true);
+        setError(null);
+        
+        // Fetch all data in parallel
+        Promise.all([
+          fetchStockPrice(normalizedTicker),
+          fetchInsiderData(normalizedTicker), 
+          fetchOwnershipData(normalizedTicker),
+          fetchMovingAverageData(normalizedTicker),
+          fetchPriceHistory(normalizedTicker),
+        ]);
       }
     }
-  }, [urlTicker, hasSearched]);
+  }, [urlTicker]);
 
   const fetchStockPrice = async (searchTicker: string) => {
     setLoading(true);
