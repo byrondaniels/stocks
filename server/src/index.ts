@@ -18,6 +18,7 @@ import rsRoutes from "./routes/rs.routes.ts";
 import searchRoutes from "./routes/search.routes.ts";
 import marketHealthRoutes from "./routes/market-health.routes.ts";
 import ownershipRoutes from "./routes/ownership.routes.ts";
+import spinoffRoutes from "./routes/spinoff.routes.ts";
 
 const PORT = process.env.PORT || 3001;
 
@@ -37,6 +38,7 @@ app.use("/api/rs", rsRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/market-health", marketHealthRoutes);
 app.use("/api/ownership", ownershipRoutes);
+app.use("/api/spinoff", spinoffRoutes);
 
 // Connect to MongoDB and start server
 connectToDatabase()
@@ -53,6 +55,7 @@ connectToDatabase()
       console.log(`  - /api/search         - Search history`);
       console.log(`  - /api/market-health  - Market health indicators`);
       console.log(`  - /api/ownership      - Detailed ownership (free SEC sources)`);
+      console.log(`  - /api/spinoff        - Spinoff investment analysis`);
     });
   })
   .catch((error) => {
