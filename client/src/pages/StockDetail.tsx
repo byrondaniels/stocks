@@ -10,6 +10,7 @@ import {
   PositionDetails,
 } from '../components/StockDetail';
 import { StockDataSections } from '../components/StockDataSections';
+import { JoelGreenblatMenu } from '../components/JoelGreenblatMenu';
 import './StockDetail.css';
 
 interface StockDetailData {
@@ -270,6 +271,9 @@ export function StockDetail() {
           </li>
         </ol>
       </nav>
+
+      {/* Joel Greenblatt Menu - Spinoff Analysis */}
+      <JoelGreenblatMenu />
 
       <StockHeader
         ticker={stock.ticker}

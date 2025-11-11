@@ -1,0 +1,293 @@
+/* Joel Greenblatt Menu Container */
+.joel-greenblat-menu {
+  width: 100%;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+/* Dropdown Toggle Button */
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  justify-content: center;
+}
+
+.dropdown-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.menu-icon {
+  font-size: 1.25rem;
+}
+
+.dropdown-arrow {
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  font-size: 0.75rem;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  overflow: hidden;
+  animation: dropdown-appear 0.2s ease;
+}
+
+@keyframes dropdown-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: white;
+  border: none;
+  text-align: left;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.item-icon {
+  font-size: 1.125rem;
+}
+
+/* Spinoff Section */
+.spinoff-section {
+  margin-top: 1rem;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: section-appear 0.3s ease;
+}
+
+@keyframes section-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.spinoff-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.spinoff-header-bar h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.close-button {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* Ticker Input Section */
+.ticker-input-section {
+  padding: 2rem;
+}
+
+.input-description {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  font-size: 0.9375rem;
+}
+
+.input-group {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.ticker-input {
+  flex: 1;
+  padding: 0.875rem 1.25rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+
+.ticker-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.ticker-input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.analyze-button {
+  padding: 0.875rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.analyze-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.analyze-button:active {
+  transform: translateY(0);
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+  font-weight: 500;
+}
+
+/* Analysis Content */
+.analysis-content {
+  background: #f9fafb;
+}
+
+.analysis-toolbar {
+  padding: 1rem 1.5rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.change-ticker-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.change-ticker-button:hover {
+  background: #667eea;
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dropdown-toggle {
+    padding: 0.875rem 1.25rem;
+    font-size: 0.9375rem;
+  }
+
+  .menu-icon {
+    font-size: 1.125rem;
+  }
+
+  .dropdown-item {
+    padding: 0.875rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  .spinoff-header-bar {
+    padding: 0.875rem 1.25rem;
+  }
+
+  .spinoff-header-bar h3 {
+    font-size: 1.125rem;
+  }
+
+  .ticker-input-section {
+    padding: 1.5rem;
+  }
+
+  .input-group {
+    flex-direction: column;
+  }
+
+  .analyze-button {
+    width: 100%;
+  }
+
+  .analysis-toolbar {
+    padding: 1rem;
+  }
+}
