@@ -62,6 +62,20 @@ export function parseOwnershipXml(
   const ownerName =
     reportingOwners.filter((name) => Boolean(name)).join(", ") || "Unknown";
 
+  // Parse footnotes for later reference
+  const footnotes = new Map<string, string>();
+  if (doc.footnotes) {
+    const footnoteList = ensureArray(doc.footnotes.footnote);
+    footnoteList.forEach((footnote) => {
+      const footnoteRecord = footnote as Record<string, unknown>;
+      const id = footnoteRecord['@_id'] || footnoteRecord.id;
+      const text = extractValue(footnoteRecord['#text'] || footnoteRecord);
+      if (id && text) {
+        footnotes.set(String(id), text);
+      }
+    });
+  }
+
   const transactions: ParsedTransaction[] = [];
 
   const nonDerivative = ensureArray(
@@ -111,6 +125,35 @@ export function parseOwnershipXml(
         extractValue(transactionAmounts.transactionAcquiredDisposedCode) ??
         extractValue(acquireDisposedNode);
 
+      // Extract footnote references - check multiple locations
+      let note: string | undefined;
+      
+      // Check transaction coding for footnote references
+      if (transactionCoding && typeof transactionCoding === 'object') {
+        const footnoteId = (transactionCoding as Record<string, unknown>).footnoteId;
+        if (footnoteId && typeof footnoteId === 'object') {
+          const id = (footnoteId as Record<string, unknown>)['@_id'] || (footnoteId as Record<string, unknown>).id;
+          if (id && footnotes.has(String(id))) {
+            note = footnotes.get(String(id));
+          }
+        }
+      }
+
+      // Check ownership nature for footnotes (for indirect ownership details)
+      if (!note && tx.ownershipNature) {
+        const ownershipNature = tx.ownershipNature as Record<string, unknown>;
+        const natureOfOwnership = ownershipNature.natureOfOwnership;
+        if (natureOfOwnership && typeof natureOfOwnership === 'object') {
+          const footnoteId = (natureOfOwnership as Record<string, unknown>).footnoteId;
+          if (footnoteId && typeof footnoteId === 'object') {
+            const id = (footnoteId as Record<string, unknown>)['@_id'] || (footnoteId as Record<string, unknown>).id;
+            if (id && footnotes.has(String(id))) {
+              note = footnotes.get(String(id));
+            }
+          }
+        }
+      }
+
       // Determine transaction type
       // Prioritize transaction code over acquire/dispose for accuracy
       let type: ParsedTransaction["type"] = "other";
@@ -141,6 +184,12 @@ export function parseOwnershipXml(
       } else if (transactionCode === "D") {
         // D = Disposition to the issuer
         type = "sell";
+      } else if (transactionCode === "C") {
+        // C = Conversion
+        type = "other";
+      } else if (transactionCode === "G") {
+        // G = Gift or transfer
+        type = "other";
       } else if (acquireDisposed === "A") {
         // Fallback: acquired
         type = "buy";
@@ -161,7 +210,8 @@ export function parseOwnershipXml(
         shares,
         price: priceRaw ? Number.parseFloat(priceRaw) : null,
         securityTitle: securityTitle ?? (isDerivative ? "Derivative" : undefined),
-        source: buildFilingDocumentUrl(cik, filing),
+        source: `Form ${filing.form}`,
+        note,
       });
     });
   };

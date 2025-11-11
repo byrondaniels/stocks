@@ -474,7 +474,7 @@ describe('parseOwnershipXml', () => {
       expect(tx.shares).toBe(8062);
       expect(tx.price).toBe(249.34);
       expect(tx.securityTitle).toBe('Common Stock');
-      expect(tx.source).toContain(mockCik);
+      expect(tx.source).toBe("Form 4");
     });
 
     it('should parse transaction 2 (S code - Sale)', () => {
@@ -599,11 +599,10 @@ describe('parseOwnershipXml', () => {
       transactions = parseOwnershipXml(EXAMPLE_OWNERSHIP_XML, mockFiling, mockCik);
     });
 
-    it('should include source URL for all transactions', () => {
+    it('should include source for all transactions', () => {
       transactions.forEach(tx => {
         expect(tx.source).toBeDefined();
-        expect(tx.source).toContain(mockCik);
-        expect(tx.source).toContain(mockFiling.accessionNumber.replace(/-/g, ''));
+        expect(tx.source).toBe("Form 4");
       });
     });
 

@@ -30,8 +30,12 @@ export function extract13DGFilings(
   for (let i = 0; i < accessionNumbers.length && filings.length < maxFilings; i += 1) {
     const form = forms[i]?.trim();
 
-    // Look for 13D/13G forms and their amendments
-    if (!form || !["SC 13D", "SC 13G", "SC 13D/A", "SC 13G/A"].includes(form)) {
+    // Look for 13D/13G forms and their amendments (include both formats)
+    const valid13DGForms = [
+      "SC 13D", "SC 13G", "SC 13D/A", "SC 13G/A",
+      "SCHEDULE 13D", "SCHEDULE 13G", "SCHEDULE 13D/A", "SCHEDULE 13G/A"
+    ];
+    if (!form || !valid13DGForms.includes(form)) {
       continue;
     }
 
