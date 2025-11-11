@@ -16,6 +16,7 @@ import stockDataRoutes from "./routes/stock-data.routes.ts";
 import canslimRoutes from "./routes/canslim.routes.ts";
 import rsRoutes from "./routes/rs.routes.ts";
 import searchRoutes from "./routes/search.routes.ts";
+import marketHealthRoutes from "./routes/market-health.routes.ts";
 
 const PORT = process.env.PORT || 3001;
 
@@ -33,6 +34,7 @@ app.use("/api/stock", stockDataRoutes);
 app.use("/api/canslim", canslimRoutes);
 app.use("/api/rs", rsRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/market-health", marketHealthRoutes);
 
 // Connect to MongoDB and start server
 connectToDatabase()
@@ -47,6 +49,7 @@ connectToDatabase()
       console.log(`  - /api/canslim        - CANSLIM scoring`);
       console.log(`  - /api/rs             - RS Rating (Relative Strength)`);
       console.log(`  - /api/search         - Search history`);
+      console.log(`  - /api/market-health  - Market health indicators`);
     });
   })
   .catch((error) => {

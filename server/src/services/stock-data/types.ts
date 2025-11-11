@@ -70,6 +70,18 @@ export type CompanyProfile = {
   source: 'fmp';
   timestamp: string;
 };
+export type VolumeAnalysis = {
+  ticker: string;
+  date: string;
+  totalVolume: number;
+  upVolume: number;
+  downVolume: number;
+  upVolumePercent: number;
+  downVolumePercent: number;
+  netVolume: number;
+  upDownRatio: number;
+  daysAnalyzed: number;
+};
 
 export type ApiError = {
   message: string;

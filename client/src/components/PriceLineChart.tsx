@@ -23,18 +23,18 @@ export function PriceLineChart({ data, ticker, compact = false, height = 250 }: 
     );
   }
 
-  // Format data for the chart
+  // Format data for the chart and reverse to show earliest dates on left
   const chartData = data.map((point) => ({
     date: new Date(point.date).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
     }),
     price: point.close,
-  }));
+  })).reverse();
 
-  // Calculate price change
-  const firstPrice = data[0]?.close || 0;
-  const lastPrice = data[data.length - 1]?.close || 0;
+  // Calculate price change (first is oldest, last is newest)
+  const firstPrice = data[data.length - 1]?.close || 0; // oldest price
+  const lastPrice = data[0]?.close || 0; // newest price
   const priceChange = lastPrice - firstPrice;
   const priceChangePercent = firstPrice > 0 ? (priceChange / firstPrice) * 100 : 0;
   const isPositive = priceChange >= 0;

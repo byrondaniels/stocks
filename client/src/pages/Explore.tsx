@@ -56,21 +56,28 @@ export function Explore() {
     setLoading(true);
     try {
       setError(null);
-      const response = await fetch(`/api/stock/price?ticker=${encodeURIComponent(searchTicker)}`);
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error ?? `Failed to fetch stock price: ${response.status}`);
+      const [priceResponse, companyResponse] = await Promise.all([
+        fetch(`/api/stock/price?ticker=${encodeURIComponent(searchTicker)}`),
+        fetch(`/api/stock/company-name?ticker=${encodeURIComponent(searchTicker)}`)
+      ]);
+
+      if (!priceResponse.ok) {
+        const payload = await priceResponse.json().catch(() => null);
+        throw new Error(payload?.error ?? `Failed to fetch stock price: ${priceResponse.status}`);
       }
-      const data = await response.json();
+
+      const priceData = await priceResponse.json();
+      const companyData = companyResponse.ok ? await companyResponse.json() : null;
+
       setStockData({
         ticker: searchTicker,
-        currentPrice: data.price,
-        companyName: data.companyName,
+        currentPrice: priceData.price,
+        companyName: companyData?.companyName,
       });
 
       // Save to search history
       try {
-        await addRecentSearch(searchTicker, data.companyName || searchTicker);
+        await addRecentSearch(searchTicker, companyData?.companyName || searchTicker);
       } catch (err) {
         console.warn('Failed to save search to history:', err);
       }
@@ -212,6 +219,9 @@ export function Explore() {
   return (
     <div className="app">
       <header className="explore-header">
+        {stockData && (
+          <h1>{stockData.companyName || stockData.ticker}</h1>
+        )}
       </header>
       {error && <div className="alert error">{error}</div>}
       {stockData && (

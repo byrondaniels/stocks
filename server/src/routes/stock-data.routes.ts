@@ -9,6 +9,7 @@ import {
   getOwnershipData,
   getFinancialMetrics,
   getHistoricalPrices,
+  getVolumeAnalysis,
   getRateLimitStatus,
   clearAllCaches,
 } from "../services/stockData.js";
@@ -117,6 +118,28 @@ router.get("/historical", async (req: Request, res: ExpressResponse) => {
   } catch (error) {
     console.error(error);
     handleApiError(res, error, ERROR_MESSAGES.HISTORICAL_DATA_ERROR);
+  }
+});
+
+/**
+ * GET /api/stock/volume-analysis?ticker=AAPL
+ * Get IBD Up/Down Volume analysis for a stock
+ */
+router.get("/volume-analysis", async (req: Request, res: ExpressResponse) => {
+  const rawTicker = (req.query.ticker as string | undefined) ?? "";
+  const ticker = normalizeTicker(rawTicker);
+
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
+    return;
+  }
+
+  try {
+    const volumeAnalysis = await getVolumeAnalysis(ticker);
+    res.json(volumeAnalysis);
+  } catch (error) {
+    console.error(error);
+    handleApiError(res, error, "Unable to retrieve volume analysis data.");
   }
 });
 

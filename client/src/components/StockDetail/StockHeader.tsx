@@ -40,7 +40,6 @@ export function StockHeader({ ticker, currentPrice, profitLoss, profitLossPercen
     <div className="stock-header">
       <div className="header-main">
         <h1 className="ticker-symbol">{ticker}</h1>
-        {companyName && <div className="company-name">{companyName}</div>}
         <div className="current-price">
           {formatCurrency(currentPrice)}
         </div>

@@ -141,3 +141,44 @@ export interface CANSLIMScore {
   analysis: CANSLIMAnalysis;
   calculatedAt: string;
 }
+
+export interface MarketHealthData {
+  vix: {
+    value: number;
+    change: number;
+    changePercent: number;
+    level: 'low' | 'moderate' | 'high' | 'extreme';
+    lastUpdated: string;
+  };
+  breadth: {
+    nyseAdvances: number;
+    nyseDeclines: number;
+    advanceDeclineRatio: number;
+    newHighs: number;
+    newLows: number;
+    highLowRatio: number;
+    lastUpdated: string;
+  };
+  fearGreed: {
+    value: number;
+    rating: 'extreme-fear' | 'fear' | 'neutral' | 'greed' | 'extreme-greed';
+    lastUpdated: string;
+  };
+  indices: {
+    sp500: {
+      value: number;
+      change: number;
+      changePercent: number;
+    };
+    dow: {
+      value: number;
+      change: number;
+      changePercent: number;
+    };
+    nasdaq: {
+      value: number;
+      change: number;
+      changePercent: number;
+    };
+  };
+}
