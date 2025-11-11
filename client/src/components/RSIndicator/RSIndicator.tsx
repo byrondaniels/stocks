@@ -24,11 +24,39 @@ interface RSRating {
   sectorETF: string | null; // Which ETF was used, or null if fallback to SPY
   sector: string | null; // The stock's sector
   industry: string | null; // The stock's industry
+  sectorRank?: number | null; // Rank of the sector among all sectors (1 = strongest)
+  sectorTotalGroups?: number | null; // Total number of groups being ranked
   calculatedAt: string;
 }
 
 interface RSIndicatorProps {
   ticker: string;
+}
+
+/**
+ * Get CSS class for rank badge based on performance
+ */
+function getRankClass(rank: number, total: number): string {
+  const percentile = (rank / total) * 100;
+
+  if (percentile <= 20) return 'excellent'; // Top 20%
+  if (percentile <= 40) return 'good';      // Top 40%
+  if (percentile <= 60) return 'average';   // Top 60%
+  if (percentile <= 80) return 'below';     // Top 80%
+  return 'poor';                            // Bottom 20%
+}
+
+/**
+ * Get label for rank based on performance
+ */
+function getRankLabel(rank: number, total: number): string {
+  const percentile = (rank / total) * 100;
+
+  if (percentile <= 20) return '(Top 20%)';
+  if (percentile <= 40) return '(Top 40%)';
+  if (percentile <= 60) return '(Top 60%)';
+  if (percentile <= 80) return '(Top 80%)';
+  return '(Bottom 20%)';
 }
 
 export function RSIndicator({ ticker }: RSIndicatorProps) {
@@ -127,6 +155,14 @@ export function RSIndicator({ ticker }: RSIndicatorProps) {
           {rsData.sector && <div>Sector: <strong>{rsData.sector}</strong></div>}
           {rsData.industry && <div>Industry: <strong>{rsData.industry}</strong></div>}
           {rsData.sectorETF && <div>Benchmark ETF: <strong>{rsData.sectorETF}</strong></div>}
+          {rsData.sectorRank && rsData.sectorTotalGroups && (
+            <div className="sector-rank-info">
+              Sector Rank: <strong className={`rank-badge rank-${getRankClass(rsData.sectorRank, rsData.sectorTotalGroups)}`}>
+                #{rsData.sectorRank} of {rsData.sectorTotalGroups}
+              </strong>
+              <span className="rank-label">{getRankLabel(rsData.sectorRank, rsData.sectorTotalGroups)}</span>
+            </div>
+          )}
         </div>
       )}
 
