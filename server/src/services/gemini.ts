@@ -235,6 +235,144 @@ Provide ONLY the JSON response, no additional text before or after.`;
 }
 
 /**
+ * Company sector and industry classification from Gemini
+ */
+export interface SectorIndustryClassification {
+  ticker: string;
+  sector: string | null;
+  industry: string | null;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+/**
+ * Determines a stock's sector and industry using Gemini AI
+ *
+ * Uses Gemini 2.0 Flash to classify a stock into its appropriate sector and industry.
+ * This is faster and more flexible than API lookups, and works for any publicly known company.
+ *
+ * @param ticker - Stock ticker symbol
+ * @returns Sector and industry classification with confidence level
+ * @throws {Error} If GEMINI_API_KEY is not configured or API call fails
+ *
+ * @example
+ * const classification = await getSectorIndustryWithGemini('NVDA');
+ * console.log(classification.sector);    // "Technology"
+ * console.log(classification.industry);  // "Semiconductors"
+ * console.log(classification.confidence); // "high"
+ */
+export async function getSectorIndustryWithGemini(
+  ticker: string
+): Promise<SectorIndustryClassification> {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is not configured');
+  }
+
+  const prompt = buildSectorIndustryPrompt(ticker);
+
+  try {
+    const response = await genAI.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{
+        role: 'user',
+        parts: [{ text: prompt }]
+      }]
+    });
+
+    const text = response.text;
+
+    if (!text) {
+      throw new Error('No response text received from Gemini API');
+    }
+
+    const classification = parseSectorIndustryResponse(text, ticker);
+    return classification;
+  } catch (error) {
+    console.error('Error calling Gemini API for sector/industry:', error);
+    throw new Error(`Failed to determine sector/industry: ${error}`);
+  }
+}
+
+/**
+ * Builds the prompt for Gemini to classify sector and industry
+ */
+function buildSectorIndustryPrompt(ticker: string): string {
+  return `You are a financial data expert. Identify the sector and industry for the stock ticker: ${ticker.toUpperCase()}
+
+**Task:** Determine the broad sector and specific industry for this company.
+
+**Sector Options (choose one):**
+- Technology
+- Health Care
+- Financials
+- Consumer Discretionary
+- Consumer Staples
+- Energy
+- Industrials
+- Materials
+- Utilities
+- Real Estate
+- Communication Services
+
+**Industry Examples (be specific):**
+For Technology: Semiconductors, Software, Hardware, IT Services, etc.
+For Health Care: Biotechnology, Pharmaceuticals, Medical Devices, Healthcare Providers, etc.
+For Financials: Banks - Regional, Insurance, Asset Management, etc.
+For Consumer Discretionary: Retail, Homebuilders, Restaurants, etc.
+For Energy: Oil & Gas E&P, Oil & Gas Exploration, etc.
+
+**Confidence Level:**
+- high: Well-known company, clear classification
+- medium: Less well-known but identifiable
+- low: Uncertain or unknown ticker
+
+**Response Format (MUST be valid JSON):**
+{
+  "sector": "<sector name from list above>",
+  "industry": "<specific industry name>",
+  "confidence": "<high|medium|low>"
+}
+
+Provide ONLY the JSON response, no additional text before or after.`;
+}
+
+/**
+ * Parses Gemini's sector/industry response
+ */
+function parseSectorIndustryResponse(
+  responseText: string,
+  ticker: string
+): SectorIndustryClassification {
+  try {
+    let jsonText = responseText.trim();
+
+    // Remove markdown code blocks if present
+    jsonText = jsonText.replace(/^```json\s*\n?/i, '');
+    jsonText = jsonText.replace(/\n?```\s*$/i, '');
+    jsonText = jsonText.trim();
+
+    const parsed = JSON.parse(jsonText);
+
+    return {
+      ticker: ticker.toUpperCase(),
+      sector: parsed.sector || null,
+      industry: parsed.industry || null,
+      confidence: parsed.confidence || 'low'
+    };
+  } catch (error) {
+    console.error('Failed to parse Gemini sector/industry response:', responseText);
+    console.error('Parse error:', error);
+
+    // Return null classification on parse error
+    return {
+      ticker: ticker.toUpperCase(),
+      sector: null,
+      industry: null,
+      confidence: 'low'
+    };
+  }
+}
+
+/**
  * Parses Gemini's response and extracts the CANSLIM analysis
  *
  * Handles JSON parsing with fallback error handling:

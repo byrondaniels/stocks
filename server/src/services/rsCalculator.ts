@@ -1,9 +1,9 @@
 import {
   getHistoricalPrices,
-  getCompanyProfile,
 } from './stockData';
 import { StockMetrics } from '../db/models';
 import { getETFForStock, getETFMatchDescription } from './stock-data/sector-etf-map.js';
+import { getSectorIndustryWithGemini } from './gemini.js';
 
 /**
  * Relative Strength Rating - New Methodology
@@ -107,26 +107,25 @@ export async function calculateRSRating(ticker: string): Promise<RSRating> {
   console.log(`[RS] Calculating RS rating for ${normalizedTicker}`);
 
   try {
-    // Fetch company profile to get sector and industry
-    let profile;
+    // Use Gemini to determine sector and industry
     let sector: string | null = null;
     let industry: string | null = null;
     let industryETF: string | null = null;
 
     try {
-      profile = await getCompanyProfile(normalizedTicker);
-      sector = profile.sector;
-      industry = profile.industry;
+      const classification = await getSectorIndustryWithGemini(normalizedTicker);
+      sector = classification.sector;
+      industry = classification.industry;
       industryETF = getETFForStock(sector, industry);
 
       if (industryETF) {
         const matchDesc = getETFMatchDescription(industryETF, sector, industry);
-        console.log(`[RS] ${normalizedTicker} - Matched to ${matchDesc}`);
+        console.log(`[RS] ${normalizedTicker} - Matched to ${matchDesc} (confidence: ${classification.confidence})`);
       } else {
         console.log(`[RS] ${normalizedTicker} - No ETF match for sector: ${sector}, industry: ${industry}`);
       }
-    } catch (profileError) {
-      console.warn(`[RS] ${normalizedTicker} - Could not fetch company profile:`, profileError);
+    } catch (geminiError) {
+      console.warn(`[RS] ${normalizedTicker} - Could not determine sector/industry with Gemini:`, geminiError);
       // Continue with null ETF
     }
 
