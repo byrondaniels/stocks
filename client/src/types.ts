@@ -75,7 +75,52 @@ export interface AddWatchlistFormData {
   notes?: string;
 }
 
+export interface OwnershipBreakdown {
+  insiderShares: number;
+  insiderPercent: number;
+  institutionalShares: number;
+  institutionalPercent: number;
+  beneficialShares: number;
+  beneficialPercent: number;
+  publicShares: number;
+  publicPercent: number;
+  floatShares: number;
+}
+
+export interface OwnershipHolder {
+  name: string;
+  shares: number;
+  percentOwnership: number;
+  type: 'insider' | 'beneficial' | 'institutional';
+  source: string;
+  lastTransactionDate?: string;
+  filingDate?: string;
+  formType?: string;
+}
+
+export interface OwnershipDataQuality {
+  hasInsiderData: boolean;
+  hasBeneficialOwnerData: boolean;
+  hasInstitutionalData: boolean;
+  hasSharesOutstanding: boolean;
+}
+
 export interface OwnershipData {
+  ticker: string;
+  companyName: string;
+  sharesOutstanding: number;
+  breakdown: OwnershipBreakdown;
+  insiders: OwnershipHolder[];
+  beneficialOwners: OwnershipHolder[];
+  institutionalHolders: OwnershipHolder[];
+  topHolders: OwnershipHolder[];
+  lastUpdated: string;
+  dataQuality: OwnershipDataQuality;
+  source: string;
+}
+
+// Legacy interface for backward compatibility
+export interface LegacyOwnershipData {
   ticker: string;
   insiderOwnership: number; // percentage
   institutionalOwnership: number; // percentage

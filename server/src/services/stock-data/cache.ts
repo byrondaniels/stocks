@@ -4,7 +4,6 @@
 
 import type {
   StockPrice,
-  OwnershipData,
   FinancialMetrics,
   HistoricalPrices,
   CompanyProfile,
@@ -16,7 +15,6 @@ type CachedData<T> = {
 };
 
 export const priceCache = new Map<string, CachedData<StockPrice>>();
-export const ownershipCache = new Map<string, CachedData<OwnershipData>>();
 export const financialsCache = new Map<string, CachedData<FinancialMetrics>>();
 export const historicalCache = new Map<string, CachedData<HistoricalPrices>>();
 export const profileCache = new Map<string, CachedData<CompanyProfile>>();
@@ -36,7 +34,6 @@ export function setCache<T>(
 
 export function clearAllCaches(): void {
   priceCache.clear();
-  ownershipCache.clear();
   financialsCache.clear();
   historicalCache.clear();
   profileCache.clear();

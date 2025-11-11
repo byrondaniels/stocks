@@ -110,7 +110,7 @@ export function Explore() {
   const fetchOwnershipData = async (searchTicker: string) => {
     try {
       setLoadingOwnership(true);
-      const response = await fetch(`/api/stock/ownership?ticker=${encodeURIComponent(searchTicker)}`);
+      const response = await fetch(`/api/ownership/detailed?ticker=${encodeURIComponent(searchTicker)}`);
       if (response.ok) {
         const data = await response.json();
         setOwnershipData(data);

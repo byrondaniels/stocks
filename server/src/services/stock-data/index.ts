@@ -12,7 +12,6 @@ export { clearAllCaches } from "./cache.js";
 // Import internal modules
 import {
   priceCache,
-  ownershipCache,
   financialsCache,
   historicalCache,
   profileCache,
@@ -22,7 +21,6 @@ import {
 
 import {
   PRICE_CACHE_TTL,
-  OWNERSHIP_CACHE_TTL,
   FINANCIALS_CACHE_TTL,
   HISTORICAL_CACHE_TTL,
   PROFILE_CACHE_TTL,
@@ -35,7 +33,7 @@ import { getRateLimitStatus as getRateLimitStatusInternal } from "./rate-limiter
 import { fetchAlphaVantageQuote, fetchAlphaVantageHistorical } from "./alpha-vantage.js";
 import { fetchFMPQuote, fetchFMPProfile } from "./fmp.js";
 
-import type { StockPrice, OwnershipData, FinancialMetrics, HistoricalPrices, CompanyProfile, VolumeAnalysis } from "./types.js";
+import type { StockPrice, FinancialMetrics, HistoricalPrices, CompanyProfile, VolumeAnalysis } from "./types.js";
 
 /**
  * Get current stock price for a ticker
@@ -74,38 +72,6 @@ export async function getCurrentPrice(ticker: string): Promise<StockPrice> {
   }
 }
 
-/**
- * Get ownership breakdown (insider/institutional/public)
- * Uses Financial Modeling Prep
- * Cached for 24 hours
- */
-export async function getOwnershipData(ticker: string): Promise<OwnershipData> {
-  const normalizedTicker = ticker.toUpperCase();
-
-  // Check cache first
-  const cached = ownershipCache.get(normalizedTicker);
-  if (isCacheValid(cached, OWNERSHIP_CACHE_TTL)) {
-    console.log(`[StockData] Returning cached ownership for ${normalizedTicker}`);
-    return cached!.data;
-  }
-
-  console.log(`[StockData] FMP ownership data temporarily disabled (requires paid subscription)`);
-  
-  // FMP requires paid subscription, return mock data for now
-  const mockOwnership = {
-    ticker: normalizedTicker,
-    insiderOwnership: 10, // Typical estimate
-    institutionalOwnership: 65, // Typical for large cap stocks
-    publicOwnership: 25, // Remaining ownership
-    floatShares: 15500000000, // Mock: ~15.5B shares float
-    sharesOutstanding: 16000000000, // Mock: ~16B shares outstanding
-    source: 'mock' as const,
-    timestamp: new Date().toISOString()
-  };
-  
-  setCache(ownershipCache, normalizedTicker, mockOwnership);
-  return mockOwnership;
-}
 
 /**
  * Get financial metrics for CANSLIM calculation

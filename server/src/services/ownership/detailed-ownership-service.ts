@@ -337,7 +337,7 @@ async function readStoredDetailedOwnership(
   try {
     const record = await StockMetrics.findOne({
       ticker,
-      metricType: 'detailed-ownership',
+      dataType: 'detailed-ownership',
     }).lean();
 
     if (!record || !record.data) {
@@ -366,10 +366,10 @@ async function writeStoredDetailedOwnership(
 ): Promise<void> {
   try {
     await StockMetrics.updateOne(
-      { ticker, metricType: 'detailed-ownership' },
+      { ticker, dataType: 'detailed-ownership' },
       {
         ticker,
-        metricType: 'detailed-ownership',
+        dataType: 'detailed-ownership',
         data,
         fetchedAt: new Date(),
       },

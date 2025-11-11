@@ -98,7 +98,7 @@ export function StockDetail() {
 
     try {
       setLoadingOwnership(true);
-      const response = await fetch(`/api/stock/ownership?ticker=${encodeURIComponent(ticker)}`);
+      const response = await fetch(`/api/ownership/detailed?ticker=${encodeURIComponent(ticker)}`);
       if (response.ok) {
         const data = await response.json();
         setOwnershipData(data);

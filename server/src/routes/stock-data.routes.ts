@@ -6,7 +6,6 @@
 import { Request, Response as ExpressResponse, Router } from "express";
 import {
   getCurrentPrice,
-  getOwnershipData,
   getFinancialMetrics,
   getHistoricalPrices,
   getVolumeAnalysis,
@@ -48,27 +47,6 @@ router.get("/price", async (req: Request, res: ExpressResponse) => {
   }
 });
 
-/**
- * GET /api/stock/ownership?ticker=AAPL
- * Get institutional ownership data
- */
-router.get("/ownership", async (req: Request, res: ExpressResponse) => {
-  const rawTicker = (req.query.ticker as string | undefined) ?? "";
-  const ticker = normalizeTicker(rawTicker);
-
-  if (!ticker || !isValidTicker(ticker)) {
-    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
-    return;
-  }
-
-  try {
-    const ownership = await getOwnershipData(ticker);
-    res.json(ownership);
-  } catch (error) {
-    console.error(error);
-    handleApiError(res, error, ERROR_MESSAGES.OWNERSHIP_DATA_ERROR);
-  }
-});
 
 /**
  * GET /api/stock/financials?ticker=AAPL

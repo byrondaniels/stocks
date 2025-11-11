@@ -12,7 +12,6 @@ export const FMP_BASE = 'https://financialmodelingprep.com/api/v3';
 
 // Cache TTLs (in milliseconds)
 export const PRICE_CACHE_TTL = 60 * 60 * 1000; // 1 hour
-export const OWNERSHIP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 export const FINANCIALS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 export const HISTORICAL_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 export const PROFILE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days (sector/industry rarely changes)

@@ -110,7 +110,7 @@ export const StockMetricsSchema = new Schema(
     dataType: {
       type: String,
       required: true,
-      enum: ["ownership", "canslim", "financials"],
+      enum: ["ownership", "canslim", "financials", "detailed-ownership", "rs"],
       index: true,
     },
     data: {

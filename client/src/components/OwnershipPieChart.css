@@ -45,6 +45,60 @@
   margin: 5px 0;
 }
 
+.top-holders-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.top-holders-section h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.top-holders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.holder-name {
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.holder-ownership {
+  font-weight: 600;
+  color: #2c5aa0;
+  margin: 0 10px;
+}
+
+.holder-type {
+  font-size: 0.75rem;
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 2px 6px;
+  border-radius: 12px;
+  text-transform: capitalize;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .ownership-chart-container {
@@ -79,5 +133,30 @@
 
   .ownership-shares-info p {
     color: #ccc;
+  }
+
+  .top-holders-section {
+    border-top-color: #444;
+  }
+
+  .top-holders-section h4 {
+    color: #e0e0e0;
+  }
+
+  .holder-item {
+    background: #2a2a2a;
+  }
+
+  .holder-name {
+    color: #e0e0e0;
+  }
+
+  .holder-ownership {
+    color: #64b5f6;
+  }
+
+  .holder-type {
+    background: #1e3a5f;
+    color: #90caf9;
   }
 }
