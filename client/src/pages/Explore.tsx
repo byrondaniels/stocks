@@ -212,32 +212,8 @@ export function Explore() {
   return (
     <div className="app">
       <header className="explore-header">
-        <h1>Explore Stocks</h1>
-        <p>Research any stock without adding it to your portfolio or watchlist</p>
       </header>
-
-      <form className="lookup-form" onSubmit={handleSubmit}>
-        <label htmlFor="ticker">Stock Ticker</label>
-        <div className="input-row">
-          <input
-            id="ticker"
-            name="ticker"
-            value={ticker}
-            onChange={(event) => setTicker(event.target.value.toUpperCase())}
-            placeholder="AAPL"
-            maxLength={TICKER_MAX_LENGTH}
-            aria-describedby="ticker-help"
-            autoComplete="off"
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? "Loading..." : "Explore"}
-          </button>
-        </div>
-        <small id="ticker-help">Enter a valid U.S. ticker (e.g., AAPL, MSFT, BRK.B)</small>
-      </form>
-
       {error && <div className="alert error">{error}</div>}
-
       {stockData && (
         <>
           <StockHeader
