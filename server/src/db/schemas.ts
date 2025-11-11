@@ -228,3 +228,42 @@ export const WatchlistSchema = new Schema(
 // Indexes for watchlist
 WatchlistSchema.index({ ticker: 1 });
 WatchlistSchema.index({ addedDate: -1 });
+
+/**
+ * SEC Company Ticker Collection Schema
+ * Stores SEC company ticker to CIK mapping
+ */
+export const SECCompanyTickerSchema = new Schema(
+  {
+    ticker: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+      unique: true,
+    },
+    cik: {
+      type: String,
+      required: true,
+    },
+    companyName: {
+      type: String,
+      required: true,
+    },
+    fetchedAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: false,
+  }
+);
+
+// Index for efficient lookups
+SECCompanyTickerSchema.index({ ticker: 1 });
+SECCompanyTickerSchema.index({ fetchedAt: -1 });
+
+// TTL index - automatically delete documents after 30 days
+SECCompanyTickerSchema.index({ fetchedAt: 1 }, { expireAfterSeconds: 2592000 });
