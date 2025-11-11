@@ -14,6 +14,10 @@ export interface IStockPrice extends Document {
   low: number;
   close: number;
   volume: number;
+  source?: string;
+  lastFetched?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const StockPrice: Model<IStockPrice> = mongoose.model<IStockPrice>(
