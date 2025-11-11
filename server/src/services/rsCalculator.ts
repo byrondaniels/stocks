@@ -1,7 +1,9 @@
 import {
   getHistoricalPrices,
+  getCompanyProfile,
 } from './stockData';
 import { StockMetrics } from '../db/models';
+import { getETFForStock, getETFMatchDescription } from './stock-data/sector-etf-map.js';
 
 /**
  * Relative Strength Rating - New Methodology
@@ -12,63 +14,10 @@ export interface RSRating {
   sectorRS: number; // 1-99 (Industry ETF vs SPY)
   stockRS: number;  // 1-99 (Stock vs Industry ETF)
   sectorETF: string | null; // Which ETF was used, or null if fallback to SPY
+  sector: string | null; // The stock's sector
+  industry: string | null; // The stock's industry
   calculatedAt: Date;
 }
-
-/**
- * Stock to Industry ETF mapping - POC with 5 ETFs
- * Expand this as needed
- */
-const STOCK_TO_ETF_MAP: Record<string, string> = {
-  // Technology - XLK
-  'AAPL': 'XLK',
-  'MSFT': 'XLK',
-  'NVDA': 'XLK',
-  'GOOGL': 'XLK',
-  'META': 'XLK',
-  'AVGO': 'XLK',
-  'ORCL': 'XLK',
-  'CRM': 'XLK',
-  'ADBE': 'XLK',
-  'CSCO': 'XLK',
-
-  // Financials - XLF
-  'JPM': 'XLF',
-  'BAC': 'XLF',
-  'WFC': 'XLF',
-  'MS': 'XLF',
-  'GS': 'XLF',
-  'BLK': 'XLF',
-  'C': 'XLF',
-  'AXP': 'XLF',
-
-  // Healthcare - XLV
-  'UNH': 'XLV',
-  'JNJ': 'XLV',
-  'LLY': 'XLV',
-  'ABBV': 'XLV',
-  'MRK': 'XLV',
-  'PFE': 'XLV',
-  'TMO': 'XLV',
-  'ABT': 'XLV',
-
-  // Consumer Discretionary - XLY
-  'AMZN': 'XLY',
-  'TSLA': 'XLY',
-  'HD': 'XLY',
-  'NKE': 'XLY',
-  'MCD': 'XLY',
-  'SBUX': 'XLY',
-  'TGT': 'XLY',
-
-  // Energy - XLE
-  'XOM': 'XLE',
-  'CVX': 'XLE',
-  'COP': 'XLE',
-  'SLB': 'XLE',
-  'EOG': 'XLE',
-  'MPC': 'XLE',
-};
 
 // Lookback windows (trading days)
 const LOOKBACK_3M = 63;
@@ -158,23 +107,41 @@ export async function calculateRSRating(ticker: string): Promise<RSRating> {
   console.log(`[RS] Calculating RS rating for ${normalizedTicker}`);
 
   try {
-    // Get the industry ETF for this stock (if mapped)
-    const industryETF = STOCK_TO_ETF_MAP[normalizedTicker];
+    // Fetch company profile to get sector and industry
+    let profile;
+    let sector: string | null = null;
+    let industry: string | null = null;
+    let industryETF: string | null = null;
+
+    try {
+      profile = await getCompanyProfile(normalizedTicker);
+      sector = profile.sector;
+      industry = profile.industry;
+      industryETF = getETFForStock(sector, industry);
+
+      if (industryETF) {
+        const matchDesc = getETFMatchDescription(industryETF, sector, industry);
+        console.log(`[RS] ${normalizedTicker} - Matched to ${matchDesc}`);
+      } else {
+        console.log(`[RS] ${normalizedTicker} - No ETF match for sector: ${sector}, industry: ${industry}`);
+      }
+    } catch (profileError) {
+      console.warn(`[RS] ${normalizedTicker} - Could not fetch company profile:`, profileError);
+      // Continue with null ETF
+    }
 
     // Fetch historical data
     const [stockData, spyData, etfData] = await Promise.all([
       getHistoricalPrices(normalizedTicker, LOOKBACK_12M),
       getHistoricalPrices('SPY', LOOKBACK_12M),
-      industryETF ? getHistoricalPrices(industryETF, LOOKBACK_12M) : null
+      industryETF ? getHistoricalPrices(industryETF, LOOKBACK_12M).catch(() => null) : null
     ]);
 
     let sectorRS: number;
     let stockRS: number;
-    let usedETF: string | null = null;
 
     if (industryETF && etfData && etfData.prices.length >= LOOKBACK_12M) {
-      // Case 1: Have ETF mapping, calculate both sector and stock RS
-      usedETF = industryETF;
+      // Case 1: Have ETF mapping and data, calculate both sector and stock RS
 
       // Sector Strength: ETF vs SPY
       const sectorRaw = weightedExcess(etfData.prices, spyData.prices);
@@ -186,8 +153,8 @@ export async function calculateRSRating(ticker: string): Promise<RSRating> {
 
       console.log(`[RS] ${normalizedTicker} - ETF: ${industryETF}, SectorRS: ${sectorRS}, StockRS: ${stockRS}`);
     } else {
-      // Case 2: No ETF mapping or insufficient ETF data - compare stock to SPY for both
-      console.log(`[RS] ${normalizedTicker} - No ETF mapping, using SPY fallback`);
+      // Case 2: No ETF mapping or insufficient ETF data - compare stock to SPY
+      console.log(`[RS] ${normalizedTicker} - Using SPY fallback`);
 
       // Both metrics compare to SPY
       const stockRaw = weightedExcess(stockData.prices, spyData.prices);
@@ -195,13 +162,16 @@ export async function calculateRSRating(ticker: string): Promise<RSRating> {
 
       sectorRS = 50; // Neutral since we don't have sector data
       stockRS = rsScore; // Stock vs SPY
+      industryETF = null; // Clear ETF since we're not using it
     }
 
     const rsRating: RSRating = {
       ticker: normalizedTicker,
       sectorRS,
       stockRS,
-      sectorETF: usedETF,
+      sectorETF: industryETF,
+      sector,
+      industry,
       calculatedAt: new Date()
     };
 
@@ -220,6 +190,8 @@ export async function calculateRSRating(ticker: string): Promise<RSRating> {
       sectorRS: 50,
       stockRS: 50,
       sectorETF: null,
+      sector: null,
+      industry: null,
       calculatedAt: new Date()
     };
 

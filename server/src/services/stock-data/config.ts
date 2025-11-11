@@ -15,6 +15,7 @@ export const PRICE_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 export const OWNERSHIP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 export const FINANCIALS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 export const HISTORICAL_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+export const PROFILE_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days (sector/industry rarely changes)
 
 // Rate limiting configuration
 export const ALPHA_VANTAGE_DAILY_LIMIT = 25;

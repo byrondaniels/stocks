@@ -57,6 +57,19 @@ export type HistoricalPrices = {
   timestamp: string;
 };
 
+export type CompanyProfile = {
+  ticker: string;
+  name: string;
+  sector: string | null;
+  industry: string | null;
+  description?: string;
+  ceo?: string;
+  employees?: number;
+  country?: string;
+  website?: string;
+  source: 'fmp';
+  timestamp: string;
+};
 export type VolumeAnalysis = {
   ticker: string;
   date: string;
