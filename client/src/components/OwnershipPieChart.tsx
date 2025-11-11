@@ -17,18 +17,18 @@ const OwnershipPieChart: React.FC<OwnershipPieChartProps> = ({ ownershipData }) 
   const data = [
     {
       name: 'Institutional',
-      value: ownershipData.institutionalOwnership,
-      percentage: ownershipData.institutionalOwnership.toFixed(2),
+      value: ownershipData.breakdown.institutionalPercent,
+      percentage: ownershipData.breakdown.institutionalPercent.toFixed(2),
     },
     {
       name: 'Insider',
-      value: ownershipData.insiderOwnership,
-      percentage: ownershipData.insiderOwnership.toFixed(2),
+      value: ownershipData.breakdown.insiderPercent,
+      percentage: ownershipData.breakdown.insiderPercent.toFixed(2),
     },
     {
       name: 'Public/Retail',
-      value: ownershipData.publicOwnership,
-      percentage: ownershipData.publicOwnership.toFixed(2),
+      value: ownershipData.breakdown.publicPercent,
+      percentage: ownershipData.breakdown.publicPercent.toFixed(2),
     },
   ];
 
@@ -36,7 +36,7 @@ const OwnershipPieChart: React.FC<OwnershipPieChartProps> = ({ ownershipData }) 
     return `${entry.percentage}%`;
   };
 
-  const lastUpdated = new Date(ownershipData.timestamp).toLocaleString();
+  const lastUpdated = new Date(ownershipData.lastUpdated).toLocaleString();
 
   return (
     <div className="ownership-chart-container">
@@ -73,9 +73,23 @@ const OwnershipPieChart: React.FC<OwnershipPieChartProps> = ({ ownershipData }) 
         <p className="ownership-source">Source: {ownershipData.source.toUpperCase()}</p>
         <p className="ownership-timestamp">Last updated: {lastUpdated}</p>
         <div className="ownership-shares-info">
-          <p>Float Shares: {ownershipData.floatShares.toLocaleString()}</p>
+          <p>Float Shares: {ownershipData.breakdown.floatShares.toLocaleString()}</p>
           <p>Shares Outstanding: {ownershipData.sharesOutstanding.toLocaleString()}</p>
         </div>
+        {ownershipData.topHolders.length > 0 && (
+          <div className="top-holders-section">
+            <h4>Top Holders</h4>
+            <div className="top-holders-list">
+              {ownershipData.topHolders.slice(0, 5).map((holder, index) => (
+                <div key={index} className="holder-item">
+                  <span className="holder-name">{holder.name}</span>
+                  <span className="holder-ownership">{holder.percentOwnership.toFixed(2)}%</span>
+                  <span className="holder-type">{holder.type}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
