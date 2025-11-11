@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MarketHealthData } from '../types';
+import { ExtensionMeter } from '../components/ExtensionMeter';
 import './MarketHealth.css';
 
 export function MarketHealth() {
@@ -92,6 +93,8 @@ export function MarketHealth() {
       </div>
 
       {error && <div className="alert error">{error}</div>}
+
+      <ExtensionMeter />
 
       {data && (
         <div className="health-grid">
