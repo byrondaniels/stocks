@@ -157,6 +157,7 @@ export async function analyzeSpinoffWithGemini(
 
     // Create MCP client and fetch real SEC data
     const mcpClient = await createMCPClient();
+    let response;
 
     try {
       console.log(`[MCP] Testing basic MCP connection for ${ticker}...`);
@@ -179,11 +180,52 @@ export async function analyzeSpinoffWithGemini(
       const company = searchData.data[0];
       console.log(`[MCP] Found company:`, company);
 
-      // For now, use a simple prompt with basic company info
-      const simplePrompt = `Analyze ${company.name} (${ticker}) as a hypothetical spinoff. Return a JSON analysis following the spinoff framework.`;
+      // Use proper spinoff analysis prompt with company info
+      const simplePrompt = `You are a spinoff investment analyst. Analyze ${company.name} (${ticker}, CIK: ${company.cik}) as a hypothetical spinoff.
+
+Return ONLY a JSON object in this exact format (no markdown, no backticks, no extra text):
+
+{
+  "company_name": "${company.name}",
+  "ticker": "${ticker}",
+  "analysis_date": "${new Date().toISOString().split('T')[0]}",
+  "executive_summary": {
+    "overall_score": 3.5,
+    "recommendation": "PASS",
+    "position_size": "Small position",
+    "key_thesis": "Brief investment thesis here"
+  },
+  "phase1_screening": {
+    "passed": true,
+    "criteria": [
+      {"name": "Market Cap Check", "status": "PASS", "details": "Company meets size requirements"},
+      {"name": "Revenue Check", "status": "PASS", "details": "Revenue above $500M threshold"}
+    ]
+  },
+  "phase2_quality": {
+    "competitive_position": {"score": 4, "weight": 0.30, "explanation": "Analysis here"},
+    "revenue_quality": {"score": 3, "weight": 0.25, "explanation": "Analysis here"},
+    "profitability": {"score": 4, "weight": 0.20, "explanation": "Analysis here"},
+    "management": {"score": 3, "weight": 0.15, "explanation": "Analysis here"},
+    "strategic_value": {"score": 4, "weight": 0.10, "explanation": "Analysis here"},
+    "weighted_average": 3.6
+  },
+  "phase3_valuation": {
+    "metrics": [
+      {"name": "EV/EBITDA", "value": "12.5x", "threshold": "<15x", "meets_threshold": true, "calculation": "Estimated calculation"},
+      {"name": "P/E", "value": "18.0x", "threshold": "<25x", "meets_threshold": true, "calculation": "Estimated calculation"}
+    ]
+  },
+  "phase4_catalysts": ["Catalyst 1", "Catalyst 2"],
+  "red_flags": ["Risk 1", "Risk 2"],
+  "sources": [{"name": "SEC EDGAR", "url": "https://www.sec.gov/edgar"}],
+  "detailed_analysis": "# Detailed analysis in markdown format"
+}
+
+Provide a realistic analysis for ${company.name}.`;
 
       // Use Gemini 2.0 Flash with simple prompt
-      const response = await genAI.models.generateContent({
+      response = await genAI.models.generateContent({
         model: 'gemini-2.0-flash',
         contents: [{ role: 'user', parts: [{ text: simplePrompt }] }],
         generationConfig: {
@@ -193,6 +235,7 @@ export async function analyzeSpinoffWithGemini(
       });
 
       console.log(`[Gemini] Response received, length:`, response?.text?.length || 0);
+      console.log(`[Gemini] First 500 chars:`, response?.text?.substring(0, 500));
 
     } finally {
       // Clean up MCP client connection
