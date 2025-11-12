@@ -160,89 +160,72 @@ export async function analyzeSpinoffWithGemini(
     let response;
 
     try {
-      console.log(`[MCP] Testing basic MCP connection for ${ticker}...`);
+      console.log(`[Spinoff] Retrieving SEC data for ${ticker}...`);
       
-      // Simple test: just search for the company
+      // Step 1: Search for the company
       const searchResult = await mcpClient.callTool({
         name: 'search_company',
         arguments: { query: ticker }
       });
       
-      console.log(`[MCP] Raw search result:`, searchResult);
-      
-      const searchData = JSON.parse(searchResult.content[0].text);
-      console.log(`[MCP] Parsed search result:`, searchData);
-      
+      const searchData = JSON.parse(searchResult.content[0]?.text || '{}');
       if (!searchData.success || !searchData.data.length) {
         throw new Error(`Company not found for ticker: ${ticker}`);
       }
       
       const company = searchData.data[0];
-      console.log(`[MCP] Found company:`, company);
+      console.log(`[Spinoff] Found ${company.name} (CIK: ${company.cik})`);
 
-      // Use proper spinoff analysis prompt with company info
-      const simplePrompt = `You are a spinoff investment analyst. Analyze ${company.name} (${ticker}, CIK: ${company.cik}) as a hypothetical spinoff.
+      // Step 2: Get real financial data from SEC
+      const factsResult = await mcpClient.callTool({
+        name: 'get_company_facts',
+        arguments: { cik: company.cik }
+      });
+      
+      const factsData = JSON.parse(factsResult.content[0]?.text || '{}');
+      if (!factsData.success) {
+        throw new Error(`Failed to get company facts: ${factsData.error}`);
+      }
 
-Return ONLY a JSON object in this exact format (no markdown, no backticks, no extra text):
+      const keyMetrics = factsData.data.keyMetrics;
 
-{
-  "company_name": "${company.name}",
-  "ticker": "${ticker}",
-  "analysis_date": "${new Date().toISOString().split('T')[0]}",
-  "executive_summary": {
-    "overall_score": 3.5,
-    "recommendation": "PASS",
-    "position_size": "Small position",
-    "key_thesis": "Brief investment thesis here"
-  },
-  "phase1_screening": {
-    "passed": true,
-    "criteria": [
-      {"name": "Market Cap Check", "status": "PASS", "details": "Company meets size requirements"},
-      {"name": "Revenue Check", "status": "PASS", "details": "Revenue above $500M threshold"}
-    ]
-  },
-  "phase2_quality": {
-    "competitive_position": {"score": 4, "weight": 0.30, "explanation": "Analysis here"},
-    "revenue_quality": {"score": 3, "weight": 0.25, "explanation": "Analysis here"},
-    "profitability": {"score": 4, "weight": 0.20, "explanation": "Analysis here"},
-    "management": {"score": 3, "weight": 0.15, "explanation": "Analysis here"},
-    "strategic_value": {"score": 4, "weight": 0.10, "explanation": "Analysis here"},
-    "weighted_average": 3.6
-  },
-  "phase3_valuation": {
-    "metrics": [
-      {"name": "EV/EBITDA", "value": "12.5x", "threshold": "<15x", "meets_threshold": true, "calculation": "Estimated calculation"},
-      {"name": "P/E", "value": "18.0x", "threshold": "<25x", "meets_threshold": true, "calculation": "Estimated calculation"}
-    ]
-  },
-  "phase4_catalysts": ["Catalyst 1", "Catalyst 2"],
-  "red_flags": ["Risk 1", "Risk 2"],
-  "sources": [{"name": "SEC EDGAR", "url": "https://www.sec.gov/edgar"}],
-  "detailed_analysis": "# Detailed analysis in markdown format"
-}
+      // Step 3: Get recent filings for additional context
+      const filingsResult = await mcpClient.callTool({
+        name: 'get_filings',
+        arguments: { 
+          cik: company.cik, 
+          form: '10-K',
+          count: 2
+        }
+      });
+      
+      const filingsData = JSON.parse(filingsResult.content[0]?.text || '{}');
+      const recentFilings = filingsData.success ? filingsData.data : [];
 
-Provide a realistic analysis for ${company.name}.`;
+      // Step 4: Build comprehensive prompt with real SEC data
+      const promptWithRealData = buildSpinoffAnalysisPromptWithData(ticker, company, {
+        keyMetrics,
+        recentFilings
+      });
 
-      // Use Gemini 2.0 Flash with simple prompt
-      response = await genAI.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: [{ role: 'user', parts: [{ text: simplePrompt }] }],
+      // Use Gemini 2.0 Flash with comprehensive real data
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: promptWithRealData }] }],
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 4096
         }
       });
 
-      console.log(`[Gemini] Response received, length:`, response?.text?.length || 0);
-      console.log(`[Gemini] First 500 chars:`, response?.text?.substring(0, 500));
+      console.log(`[Spinoff] Analysis completed for ${company.name}`);
 
     } finally {
       // Clean up MCP client connection
       await mcpClient.close();
     }
 
-    const text = response.text;
+    const text = response?.response?.text();
 
     if (!text) {
       throw new Error('No response text received from Gemini API');
@@ -275,23 +258,40 @@ Provide a realistic analysis for ${company.name}.`;
  */
 function buildSpinoffAnalysisPromptWithData(ticker: string, company: any, secData: any): string {
   const keyMetrics = secData?.keyMetrics || {};
+  const recentFilings = secData?.recentFilings || [];
+  
+  function formatMetric(metric: any) {
+    if (!metric) return 'N/A';
+    if (typeof metric.value === 'number') {
+      return `$${(metric.value / 1e9).toFixed(1)}B (${metric.period || 'N/A'})`;
+    }
+    return 'N/A';
+  }
   
   const SYSTEM_PROMPT = `You are a spinoff investment analyst. I have provided you with REAL SEC EDGAR financial data for this company.
 
 COMPANY INFORMATION:
 - Name: ${company.name}
-- Ticker: ${company.ticker}
+- Ticker: ${company.ticker || ticker}
 - CIK: ${company.cik}
+- SIC: ${keyMetrics.sic || 'N/A'} - ${keyMetrics.sicDescription || 'N/A'}
 
-REAL SEC EDGAR FINANCIAL DATA:
-- Revenue (TTM): ${formatMetric(keyMetrics.metrics?.revenue)}
-- Net Income (TTM): ${formatMetric(keyMetrics.metrics?.netIncome)}
+REAL SEC EDGAR FINANCIAL DATA (Latest Available):
+- Revenue: ${formatMetric(keyMetrics.metrics?.revenue)}
+- Net Income: ${formatMetric(keyMetrics.metrics?.netIncome)}
 - Total Assets: ${formatMetric(keyMetrics.metrics?.totalAssets)}
 - Total Liabilities: ${formatMetric(keyMetrics.metrics?.totalLiabilities)}
 - Stockholders Equity: ${formatMetric(keyMetrics.metrics?.stockholdersEquity)}
 - Operating Income: ${formatMetric(keyMetrics.metrics?.operatingIncome)}
 - Interest Expense: ${formatMetric(keyMetrics.metrics?.interestExpense)}
 - Cash & Equivalents: ${formatMetric(keyMetrics.metrics?.cashAndEquivalents)}
+- Current Assets: ${formatMetric(keyMetrics.metrics?.currentAssets)}
+- Current Liabilities: ${formatMetric(keyMetrics.metrics?.currentLiabilities)}
+
+RECENT SEC FILINGS:
+${recentFilings.length > 0 ? recentFilings.map((f: any, i: number) => 
+  `${i + 1}. ${f.form} filed on ${f.filingDate} (Report Date: ${f.reportDate || 'N/A'})`
+).join('\n') : 'No recent filings data available'}
 
 ANALYSIS FRAMEWORK:
 
@@ -327,14 +327,15 @@ RED FLAGS (auto-disqualify):
 - Customer concentration >30%
 - Disruptive technology threat
 
-IMPORTANT: This is a hypothetical spinoff analysis. Use the real SEC data provided to calculate actual financial metrics and provide a comprehensive analysis.
+IMPORTANT: This is a hypothetical spinoff analysis. Use the real SEC data provided above to calculate actual financial metrics and provide a comprehensive analysis.
+
+Calculate actual metrics using the provided financial data:
+- Use Operating Income and Interest Expense to calculate Interest Coverage Ratio
+- Use Net Income and Revenue to calculate profit margins  
+- Use Assets and Liabilities to calculate debt metrics
+- Show your calculations in the "calculation" field for each valuation metric
 
 Return ONLY this JSON (no extra text):`;
-
-  function formatMetric(metric: any) {
-    if (!metric) return 'N/A';
-    return `$${(metric.value / 1e9).toFixed(1)}B (${metric.period})`;
-  }
 
   return SYSTEM_PROMPT + `
 
