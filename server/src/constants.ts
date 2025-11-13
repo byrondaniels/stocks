@@ -95,6 +95,7 @@ export const SEC_CONFIG = {
   SUBMISSIONS_URL: "https://data.sec.gov/submissions/",
   TICKER_URL: "https://www.sec.gov/files/company_tickers.json",
   ARCHIVES_URL: "https://www.sec.gov/Archives/edgar/data",
+  EDGAR_API_BASE: "https://data.sec.gov/api/xbrl",
   MIN_REQUEST_INTERVAL_MS: 250,
   SUBMISSION_CACHE_MS: 15 * MS_PER_MINUTE,
   TRANSACTION_CACHE_MS: 5 * MS_PER_MINUTE,

@@ -338,3 +338,125 @@ SpinoffAnalysisSchema.index({ timestamp: -1 });
 
 // TTL index - automatically delete documents after 7 days (spinoff data ages quickly)
 SpinoffAnalysisSchema.index({ timestamp: 1 }, { expireAfterSeconds: 604800 });
+
+/**
+ * SEC Company Facts Collection Schema
+ * Stores raw company facts data from SEC EDGAR API
+ */
+export const SECCompanyFactsSchema = new Schema(
+  {
+    ticker: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+    },
+    cik: {
+      type: String,
+      required: true,
+    },
+    entityName: {
+      type: String,
+      required: true,
+    },
+    facts: {
+      type: Schema.Types.Mixed, // Stores the complete facts object from SEC API
+      required: true,
+    },
+    fetchedAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: false,
+  }
+);
+
+// Index for efficient lookups
+SECCompanyFactsSchema.index({ ticker: 1 });
+SECCompanyFactsSchema.index({ cik: 1 });
+SECCompanyFactsSchema.index({ fetchedAt: -1 });
+
+// TTL index - automatically delete documents after 24 hours
+SECCompanyFactsSchema.index({ fetchedAt: 1 }, { expireAfterSeconds: 86400 });
+
+/**
+ * Financial Ratios Collection Schema
+ * Stores computed financial ratios and metrics
+ */
+export const FinancialRatiosSchema = new Schema(
+  {
+    ticker: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+      unique: true,
+    },
+    cik: {
+      type: String,
+      required: true,
+    },
+    entityName: {
+      type: String,
+      required: true,
+    },
+    metrics: {
+      // Return on Equity (Net Income / Shareholders' Equity)
+      roe: {
+        type: Map,
+        of: Number, // Map<year, value>
+      },
+      // Return on Assets (Net Income / Total Assets)
+      roa: {
+        type: Map,
+        of: Number,
+      },
+      // Profit Margin (Net Income / Revenue)
+      profitMargin: {
+        type: Map,
+        of: Number,
+      },
+      // Current Ratio (Current Assets / Current Liabilities)
+      currentRatio: {
+        type: Map,
+        of: Number,
+      },
+      // Debt-to-Equity Ratio (Total Debt / Shareholders' Equity)
+      debtToEquity: {
+        type: Map,
+        of: Number,
+      },
+      // Revenue Growth Rate ((Current Revenue - Prior Revenue) / Prior Revenue)
+      revenueGrowth: {
+        type: Map,
+        of: Number,
+      },
+      // EPS Growth ((Current EPS - Prior EPS) / Prior EPS)
+      epsGrowth: {
+        type: Map,
+        of: Number,
+      },
+      // Free Cash Flow (Operating Cash Flow - Capital Expenditures)
+      freeCashFlow: {
+        type: Map,
+        of: Number,
+      },
+    },
+    calculatedAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: false,
+  }
+);
+
+// Index for efficient lookups
+FinancialRatiosSchema.index({ ticker: 1 });
+FinancialRatiosSchema.index({ cik: 1 });
+FinancialRatiosSchema.index({ calculatedAt: -1 });
