@@ -257,183 +257,186 @@ x-common-concepts:
     Common financial concepts that can be retrieved using this endpoint.
     Format: /api/xbrl/companyconcept/CIK{cik}/{taxonomy}/{tag}.json
 
+    Replace {cik} with any company's 10-digit CIK (with leading zeros).
+    Example: CIK0002019061 for South Bow Corporation
+
   balance-sheet:
     assets:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/Assets.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/Assets.json
         description: Total Assets
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AssetsCurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/AssetsCurrent.json
         description: Current Assets
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AssetsNoncurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/AssetsNoncurrent.json
         description: Non-current Assets
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CashAndCashEquivalentsAtCarryingValue.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/CashAndCashEquivalentsAtCarryingValue.json
         description: Cash and Cash Equivalents
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccountsReceivableNetCurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/AccountsReceivableNetCurrent.json
         description: Accounts Receivable (Net, Current)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/InventoryNet.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/InventoryNet.json
         description: Inventory (Net)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PrepaidExpenseCurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/PrepaidExpenseCurrent.json
         description: Prepaid Expenses (Current)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PropertyPlantAndEquipmentNet.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/PropertyPlantAndEquipmentNet.json
         description: Property, Plant and Equipment (Net)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/Goodwill.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/Goodwill.json
         description: Goodwill
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IntangibleAssetsNetExcludingGoodwill.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/IntangibleAssetsNetExcludingGoodwill.json
         description: Intangible Assets (Net, Excluding Goodwill)
 
     liabilities:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/Liabilities.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/Liabilities.json
         description: Total Liabilities
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LiabilitiesCurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/LiabilitiesCurrent.json
         description: Current Liabilities
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccountsPayableCurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/AccountsPayableCurrent.json
         description: Accounts Payable (Current)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccountsPayableTradeCurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/AccountsPayableTradeCurrent.json
         description: Accounts Payable, Trade (Current)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccruedIncomeTaxesCurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/AccruedIncomeTaxesCurrent.json
         description: Accrued Income Taxes (Current)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LongTermDebt.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/LongTermDebt.json
         description: Long-term Debt
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LongTermDebtNoncurrent.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/LongTermDebtNoncurrent.json
         description: Long-term Debt (Non-current)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/DeferredIncomeTaxLiabilitiesNet.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/DeferredIncomeTaxLiabilitiesNet.json
         description: Deferred Tax Liabilities (Net)
 
     equity:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/StockholdersEquity.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/StockholdersEquity.json
         description: Stockholders' Equity
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CommonStockValue.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/CommonStockValue.json
         description: Common Stock Value
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AdditionalPaidInCapital.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/AdditionalPaidInCapital.json
         description: Additional Paid-in Capital
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/RetainedEarningsAccumulatedDeficit.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/RetainedEarningsAccumulatedDeficit.json
         description: Retained Earnings (Accumulated Deficit)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccumulatedOtherComprehensiveIncomeLossNetOfTax.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/AccumulatedOtherComprehensiveIncomeLossNetOfTax.json
         description: Accumulated Other Comprehensive Income (Loss)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/TreasuryStockValue.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/TreasuryStockValue.json
         description: Treasury Stock Value
 
   income-statement:
     revenue:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/Revenues.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/Revenues.json
         description: Total Revenues
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax.json
         description: Revenue from Contracts with Customers
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/SalesRevenueNet.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/SalesRevenueNet.json
         description: Sales Revenue (Net)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/InterestIncomeOther.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/InterestIncomeOther.json
         description: Interest Income (Other)
 
     expenses:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CostOfGoodsAndServicesSold.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/CostOfGoodsAndServicesSold.json
         description: Cost of Goods and Services Sold
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CostsAndExpenses.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/CostsAndExpenses.json
         description: Total Costs and Expenses
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/OperatingCostsAndExpenses.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/OperatingCostsAndExpenses.json
         description: Operating Costs and Expenses
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/SellingGeneralAndAdministrativeExpense.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/SellingGeneralAndAdministrativeExpense.json
         description: Selling, General and Administrative Expenses
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ResearchAndDevelopmentExpense.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/ResearchAndDevelopmentExpense.json
         description: Research and Development Expenses
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/DepreciationDepletionAndAmortization.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/DepreciationDepletionAndAmortization.json
         description: Depreciation, Depletion and Amortization
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/InterestExpense.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/InterestExpense.json
         description: Interest Expense
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncomeTaxExpenseBenefit.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/IncomeTaxExpenseBenefit.json
         description: Income Tax Expense (Benefit)
 
     income:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/GrossProfit.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/GrossProfit.json
         description: Gross Profit
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/OperatingIncomeLoss.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/OperatingIncomeLoss.json
         description: Operating Income (Loss)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest.json
         description: Income Before Taxes
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NetIncomeLoss.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/NetIncomeLoss.json
         description: Net Income (Loss)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/EarningsPerShareBasic.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/EarningsPerShareBasic.json
         description: Earnings Per Share (Basic)
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/EarningsPerShareDiluted.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/EarningsPerShareDiluted.json
         description: Earnings Per Share (Diluted)
 
   cash-flow:
     operating:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NetCashProvidedByUsedInOperatingActivities.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/NetCashProvidedByUsedInOperatingActivities.json
         description: Net Cash from Operating Activities
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/DepreciationDepletionAndAmortization.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/DepreciationDepletionAndAmortization.json
         description: Depreciation, Depletion and Amortization
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncreaseDecreaseInAccountsReceivable.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/IncreaseDecreaseInAccountsReceivable.json
         description: Change in Accounts Receivable
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncreaseDecreaseInInventories.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/IncreaseDecreaseInInventories.json
         description: Change in Inventories
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncreaseDecreaseInAccountsPayable.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/IncreaseDecreaseInAccountsPayable.json
         description: Change in Accounts Payable
 
     investing:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NetCashProvidedByUsedInInvestingActivities.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/NetCashProvidedByUsedInInvestingActivities.json
         description: Net Cash from Investing Activities
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PaymentsToAcquirePropertyPlantAndEquipment.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/PaymentsToAcquirePropertyPlantAndEquipment.json
         description: Capital Expenditures
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ProceedsFromSaleOfPropertyPlantAndEquipment.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/ProceedsFromSaleOfPropertyPlantAndEquipment.json
         description: Proceeds from Sale of PP&E
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PaymentsToAcquireBusinessesNetOfCashAcquired.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/PaymentsToAcquireBusinessesNetOfCashAcquired.json
         description: Acquisitions (Net of Cash)
 
     financing:
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NetCashProvidedByUsedInFinancingActivities.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/NetCashProvidedByUsedInFinancingActivities.json
         description: Net Cash from Financing Activities
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ProceedsFromIssuanceOfCommonStock.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/ProceedsFromIssuanceOfCommonStock.json
         description: Proceeds from Issuance of Common Stock
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PaymentsOfDividends.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/PaymentsOfDividends.json
         description: Dividends Paid
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/RepaymentsOfLongTermDebt.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/RepaymentsOfLongTermDebt.json
         description: Repayment of Long-term Debt
-      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ProceedsFromIssuanceOfLongTermDebt.json
+      - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/ProceedsFromIssuanceOfLongTermDebt.json
         description: Proceeds from Long-term Debt
 
   shares-and-equity:
-    - path: /api/xbrl/companyconcept/CIK0002019061/dei/EntityCommonStockSharesOutstanding.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/dei/EntityCommonStockSharesOutstanding.json
       description: Common Stock Shares Outstanding
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CommonStockSharesIssued.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/CommonStockSharesIssued.json
       description: Common Stock Shares Issued
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CommonStockSharesOutstanding.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/CommonStockSharesOutstanding.json
       description: Common Stock Shares Outstanding
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/WeightedAverageNumberOfSharesOutstandingBasic.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/WeightedAverageNumberOfSharesOutstandingBasic.json
       description: Weighted Average Shares Outstanding (Basic)
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding.json
       description: Weighted Average Shares Outstanding (Diluted)
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CommonStockDividendsPerShareDeclared.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/CommonStockDividendsPerShareDeclared.json
       description: Dividends Per Share Declared
 
   ratios-and-metrics:
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/WorkingCapital.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/WorkingCapital.json
       description: Working Capital
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/BookValuePerShare.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/BookValuePerShare.json
       description: Book Value Per Share
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/DebtToEquityRatio.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/DebtToEquityRatio.json
       description: Debt to Equity Ratio
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CurrentRatio.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/CurrentRatio.json
       description: Current Ratio
 
   segment-and-geographic:
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NumberOfReportableSegments.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/NumberOfReportableSegments.json
       description: Number of Reportable Segments
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NumberOfOperatingSegments.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/NumberOfOperatingSegments.json
       description: Number of Operating Segments
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/RevenueFromExternalCustomersByGeographicAreas.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/RevenueFromExternalCustomersByGeographicAreas.json
       description: Revenue by Geographic Areas
 
   employee-and-compensation:
-    - path: /api/xbrl/companyconcept/CIK0002019061/dei/EntityNumberOfEmployees.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/dei/EntityNumberOfEmployees.json
       description: Number of Employees
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LaborAndRelatedExpense.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/LaborAndRelatedExpense.json
       description: Labor and Related Expenses
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ShareBasedCompensation.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/ShareBasedCompensation.json
       description: Share-based Compensation Expense
 
   commitments-and-contingencies:
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LongTermPurchaseCommitmentAmount.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/LongTermPurchaseCommitmentAmount.json
       description: Long-term Purchase Commitments
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/OperatingLeasesFutureMinimumPaymentsDue.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/OperatingLeasesFutureMinimumPaymentsDue.json
       description: Operating Lease Future Payments
-    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LossContingencyAccrualAtCarryingValue.json
+    - path: /api/xbrl/companyconcept/CIK{cik}/us-gaap/LossContingencyAccrualAtCarryingValue.json
       description: Loss Contingency Accrual
