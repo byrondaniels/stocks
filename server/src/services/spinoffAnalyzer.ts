@@ -2,10 +2,8 @@ import { GoogleGenAI } from '@google/genai';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
-// Initialize Gemini AI with new SDK  
-const genAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || ''
-});
+// Initialize Gemini AI with new SDK
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 /**
  * Create MCP client connection to SEC EDGAR server
@@ -161,18 +159,18 @@ export async function analyzeSpinoffWithGemini(
 
     try {
       console.log(`[Spinoff] Retrieving SEC data for ${ticker}...`);
-      
+
       // Step 1: Search for the company
       const searchResult = await mcpClient.callTool({
         name: 'search_company',
         arguments: { query: ticker }
       });
-      
+
       const searchData = JSON.parse(searchResult.content[0]?.text || '{}');
       if (!searchData.success || !searchData.data.length) {
         throw new Error(`Company not found for ticker: ${ticker}`);
       }
-      
+
       const company = searchData.data[0];
       console.log(`[Spinoff] Found ${company.name} (CIK: ${company.cik})`);
 
@@ -181,7 +179,7 @@ export async function analyzeSpinoffWithGemini(
         name: 'get_company_facts',
         arguments: { cik: company.cik }
       });
-      
+
       const factsData = JSON.parse(factsResult.content[0]?.text || '{}');
       if (!factsData.success) {
         throw new Error(`Failed to get company facts: ${factsData.error}`);
@@ -192,13 +190,13 @@ export async function analyzeSpinoffWithGemini(
       // Step 3: Get recent filings for additional context
       const filingsResult = await mcpClient.callTool({
         name: 'get_filings',
-        arguments: { 
-          cik: company.cik, 
+        arguments: {
+          cik: company.cik,
           form: '10-K',
           count: 2
         }
       });
-      
+
       const filingsData = JSON.parse(filingsResult.content[0]?.text || '{}');
       const recentFilings = filingsData.success ? filingsData.data : [];
 
@@ -209,8 +207,8 @@ export async function analyzeSpinoffWithGemini(
       });
 
       // Use Gemini 2.0 Flash with comprehensive real data
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-      response = await model.generateContent({
+      response = await genAI.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
         contents: [{ role: 'user', parts: [{ text: promptWithRealData }] }],
         generationConfig: {
           temperature: 0.7,
@@ -259,7 +257,7 @@ export async function analyzeSpinoffWithGemini(
 function buildSpinoffAnalysisPromptWithData(ticker: string, company: any, secData: any): string {
   const keyMetrics = secData?.keyMetrics || {};
   const recentFilings = secData?.recentFilings || [];
-  
+
   function formatMetric(metric: any) {
     if (!metric) return 'N/A';
     if (typeof metric.value === 'number') {
@@ -267,7 +265,7 @@ function buildSpinoffAnalysisPromptWithData(ticker: string, company: any, secDat
     }
     return 'N/A';
   }
-  
+
   const SYSTEM_PROMPT = `You are a spinoff investment analyst. I have provided you with REAL SEC EDGAR financial data for this company.
 
 COMPANY INFORMATION:
@@ -289,7 +287,7 @@ REAL SEC EDGAR FINANCIAL DATA (Latest Available):
 - Current Liabilities: ${formatMetric(keyMetrics.metrics?.currentLiabilities)}
 
 RECENT SEC FILINGS:
-${recentFilings.length > 0 ? recentFilings.map((f: any, i: number) => 
+${recentFilings.length > 0 ? recentFilings.map((f: any, i: number) =>
   `${i + 1}. ${f.form} filed on ${f.filingDate} (Report Date: ${f.reportDate || 'N/A'})`
 ).join('\n') : 'No recent filings data available'}
 
@@ -331,7 +329,7 @@ IMPORTANT: This is a hypothetical spinoff analysis. Use the real SEC data provid
 
 Calculate actual metrics using the provided financial data:
 - Use Operating Income and Interest Expense to calculate Interest Coverage Ratio
-- Use Net Income and Revenue to calculate profit margins  
+- Use Net Income and Revenue to calculate profit margins
 - Use Assets and Liabilities to calculate debt metrics
 - Show your calculations in the "calculation" field for each valuation metric
 
