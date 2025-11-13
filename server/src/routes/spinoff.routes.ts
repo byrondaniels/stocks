@@ -5,6 +5,7 @@
 
 import { Request, Response as ExpressResponse, Router } from "express";
 import { analyzeSpinoffWithGemini } from "../services/spinoffAnalyzer.js";
+import { lookupSpinoff } from "../services/spinoffLookup.service.js";
 import { ERROR_MESSAGES } from "../constants.js";
 import { normalizeTicker, isValidTicker } from "../../../shared/validation.js";
 import { handleApiError, sendBadRequest } from "../utils/errorHandler.js";
@@ -96,6 +97,34 @@ router.post("/refresh", async (req: Request, res: ExpressResponse) => {
   } catch (error) {
     console.error("Error refreshing spinoff analysis:", error);
     handleApiError(res, error, "Unable to refresh spinoff analysis. Please try again later.");
+  }
+});
+
+/**
+ * GET /api/spinoff/lookup?ticker=TRP
+ * Lookup spinoff information (is it a spinoff, parent company, parent ticker)
+ * Always performs fresh lookup - no caching
+ */
+router.get("/lookup", async (req: Request, res: ExpressResponse) => {
+  const rawTicker = (req.query.ticker as string | undefined) ?? "";
+  const ticker = normalizeTicker(rawTicker);
+
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
+    return;
+  }
+
+  try {
+    console.log(`[Spinoff Lookup] Looking up spinoff info for ${ticker}`);
+    const result = await lookupSpinoff(ticker);
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error looking up spinoff:", error);
+    handleApiError(res, error, "Unable to lookup spinoff information. Please try again later.");
   }
 });
 
