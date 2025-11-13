@@ -340,6 +340,47 @@ SpinoffAnalysisSchema.index({ timestamp: -1 });
 SpinoffAnalysisSchema.index({ timestamp: 1 }, { expireAfterSeconds: 604800 });
 
 /**
+ * Spinoff Lookup Collection Schema
+ * Stores simple spinoff identification data (is it a spinoff, parent company, parent ticker)
+ */
+export const SpinoffLookupSchema = new Schema(
+  {
+    ticker: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+      unique: true,
+    },
+    isSpinoff: {
+      type: Boolean,
+      required: true,
+    },
+    parentCompany: {
+      type: String,
+      default: null,
+    },
+    parentTicker: {
+      type: String,
+      uppercase: true,
+      default: null,
+    },
+    analyzedAt: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: false,
+  }
+);
+
+// Index for efficient queries
+SpinoffLookupSchema.index({ ticker: 1 });
+SpinoffLookupSchema.index({ analyzedAt: -1 });
+
+/**
  * SEC Company Facts Collection Schema
  * Stores raw company facts data from SEC EDGAR API
  */

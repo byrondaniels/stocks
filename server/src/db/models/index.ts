@@ -11,3 +11,5 @@ export * from "./SearchHistory.model.ts";
 export * from "./SECCompanyTicker.model.ts";
 export * from "./SECCompanyFacts.model.ts";
 export * from "./FinancialRatios.model.ts";
+export * from "./SpinoffAnalysis.model.ts";
+export * from "./SpinoffLookup.model.ts";
