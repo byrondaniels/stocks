@@ -223,7 +223,7 @@ export async function analyzeSpinoffWithGemini(
       await mcpClient.close();
     }
 
-    const text = response?.response?.text();
+    const text = response?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
       throw new Error('No response text received from Gemini API');
