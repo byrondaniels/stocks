@@ -1,16 +1,22 @@
 openapi: 3.0.3
 info:
-  title: SEDAR API - Company Concept
+  title: SEC EDGAR XBRL API - Company Concept
   description: |
     API specification for retrieving specific financial concepts for a company.
-    This endpoint allows targeted retrieval of individual XBRL concepts by taxonomy and tag.
+    This endpoint allows targeted retrieval of individual XBRL concepts by taxonomy and tag from the SEC EDGAR database.
+
+    **Important**: This endpoint returns historical data for a single concept across all filings.
+    Use this when you need time-series data for a specific metric (e.g., all historical revenue values).
   version: 1.0.0
   contact:
-    name: API Support
+    name: SEC EDGAR Support
+  externalDocs:
+    description: SEC EDGAR API Documentation
+    url: https://www.sec.gov/edgar/sec-api-documentation
 
 servers:
-  - url: https://api.sedar.example.com
-    description: Production server
+  - url: https://data.sec.gov
+    description: SEC EDGAR Production API
 
 paths:
   /api/xbrl/companyconcept/CIK{cik}/{taxonomy}/{tag}.json:
@@ -18,7 +24,12 @@ paths:
       summary: Get Company Concept
       description: |
         Retrieves a specific financial concept for a company identified by CIK.
-        Returns historical data points for the specified taxonomy and tag combination.
+        Returns historical data points for the specified taxonomy and tag combination across all filings.
+
+        **Example**: `/api/xbrl/companyconcept/CIK0000320193/us-gaap/Assets.json` returns all historical Asset values for Apple Inc.
+
+        **Rate Limiting**: SEC requires requests to be limited to 10 per second.
+        **User-Agent Required**: All requests must include a User-Agent header identifying your application and contact information.
       operationId: getCompanyConcept
       tags:
         - Company Concepts
@@ -74,6 +85,12 @@ components:
   schemas:
     CompanyConceptResponse:
       type: object
+      description: |
+        Response structure for a single company concept from the SEC EDGAR API.
+
+        **Direct SEC Response**: This is the structure returned directly by the SEC API.
+        No wrapper - this is the actual top-level response from
+        `https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/{taxonomy}/{tag}.json`
       required:
         - cik
         - entityName
@@ -98,7 +115,7 @@ components:
           example: "us-gaap"
         tag:
           type: string
-          description: XBRL concept tag
+          description: XBRL concept tag (e.g., Assets, Revenues, NetIncomeLoss)
           example: "Assets"
         label:
           type: string
@@ -106,11 +123,13 @@ components:
           example: "Assets"
         description:
           type: string
-          description: Detailed description of the concept
+          description: Detailed description of the concept from the XBRL taxonomy
           example: "Sum of the carrying amounts as of the balance sheet date of all assets that are recognized."
         units:
           type: object
-          description: Map of unit types to arrays of data points
+          description: |
+            Map of unit types to arrays of data points.
+            Common unit types: USD, shares, pure (for ratios), USD/shares (for per-share metrics)
           additionalProperties:
             type: array
             items:

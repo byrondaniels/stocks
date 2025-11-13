@@ -1,28 +1,39 @@
 openapi: 3.0.3
 info:
-  title: SEDAR API - Company Facts
-  description: API specification for retrieving company financial facts from SEDAR
+  title: SEC EDGAR XBRL API - Company Facts
+  description: |
+    API specification for retrieving company financial facts from the SEC EDGAR XBRL database.
+    This API provides access to structured financial data submitted by public companies.
   version: 1.0.0
   contact:
-    name: API Support
+    name: SEC EDGAR Support
+  externalDocs:
+    description: SEC EDGAR API Documentation
+    url: https://www.sec.gov/edgar/sec-api-documentation
 
 servers:
-  - url: https://api.sedar.example.com/v1
-    description: Production server
+  - url: https://data.sec.gov
+    description: SEC EDGAR Production API
 
 paths:
-  /company/{cik}/facts:
+  /api/xbrl/companyfacts/CIK{cik}.json:
     get:
       summary: Get Company Facts
-      description: Retrieves comprehensive financial facts and metrics for a company by CIK
+      description: |
+        Retrieves comprehensive financial facts and metrics for a company by CIK.
+        Returns all XBRL facts reported by the company across all taxonomies (dei, us-gaap, ifrs-full, etc.).
+
+        **Rate Limiting**: SEC requires requests to be limited to 10 per second.
+        **User-Agent Required**: All requests must include a User-Agent header identifying your application.
       operationId: getCompanyFacts
       parameters:
         - name: cik
           in: path
           required: true
-          description: Central Index Key (CIK) of the company
+          description: Central Index Key (CIK) of the company (10 digits with leading zeros, e.g., CIK0000320193 for Apple Inc.)
           schema:
             type: string
+            pattern: '^\d{10}$'
             example: "0002019061"
       responses:
         '200':
@@ -48,6 +59,11 @@ components:
   schemas:
     CompanyFactsResponse:
       type: object
+      description: |
+        Response wrapper that includes both raw SEC data and calculated key metrics.
+
+        **Note**: The direct SEC API returns only the `raw` section.
+        This schema documents a wrapped response that adds computed `keyMetrics` for convenience.
       required:
         - success
         - data
@@ -77,6 +93,12 @@ components:
 
     RawCompanyFacts:
       type: object
+      description: |
+        Raw company facts as returned by the SEC EDGAR API.
+
+        **Direct SEC API Response**: When calling the SEC API directly at
+        `https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json`,
+        this is the top-level response object (no wrapper).
       required:
         - cik
         - entityName
@@ -92,7 +114,7 @@ components:
           example: "SOUTH BOW CORPORATION"
         facts:
           type: object
-          description: Financial facts organized by taxonomy namespace
+          description: Financial facts organized by taxonomy namespace (dei, us-gaap, ifrs-full, etc.)
           properties:
             dei:
               type: object
