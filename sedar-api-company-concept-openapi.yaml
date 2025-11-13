@@ -1,0 +1,439 @@
+openapi: 3.0.3
+info:
+  title: SEDAR API - Company Concept
+  description: |
+    API specification for retrieving specific financial concepts for a company.
+    This endpoint allows targeted retrieval of individual XBRL concepts by taxonomy and tag.
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: https://api.sedar.example.com
+    description: Production server
+
+paths:
+  /api/xbrl/companyconcept/CIK{cik}/{taxonomy}/{tag}.json:
+    get:
+      summary: Get Company Concept
+      description: |
+        Retrieves a specific financial concept for a company identified by CIK.
+        Returns historical data points for the specified taxonomy and tag combination.
+      operationId: getCompanyConcept
+      tags:
+        - Company Concepts
+      parameters:
+        - name: cik
+          in: path
+          required: true
+          description: Central Index Key (CIK) of the company (10 digits with leading zeros)
+          schema:
+            type: string
+            pattern: '^\d{10}$'
+            example: "0002019061"
+        - name: taxonomy
+          in: path
+          required: true
+          description: XBRL taxonomy namespace
+          schema:
+            type: string
+            enum:
+              - us-gaap
+              - dei
+              - ifrs-full
+              - srt
+            example: "us-gaap"
+        - name: tag
+          in: path
+          required: true
+          description: XBRL concept tag name
+          schema:
+            type: string
+            example: "AccountsPayableCurrent"
+      responses:
+        '200':
+          description: Successful response with company concept data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyConceptResponse'
+        '404':
+          description: Company or concept not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CompanyConceptResponse:
+      type: object
+      required:
+        - cik
+        - entityName
+        - taxonomy
+        - tag
+        - label
+        - description
+        - units
+      properties:
+        cik:
+          type: string
+          description: Central Index Key (CIK) of the company
+          example: "0002019061"
+        entityName:
+          type: string
+          description: Official name of the entity
+          example: "SOUTH BOW CORPORATION"
+        taxonomy:
+          type: string
+          description: XBRL taxonomy namespace
+          enum: [us-gaap, dei, ifrs-full, srt]
+          example: "us-gaap"
+        tag:
+          type: string
+          description: XBRL concept tag
+          example: "Assets"
+        label:
+          type: string
+          description: Human-readable label for the concept
+          example: "Assets"
+        description:
+          type: string
+          description: Detailed description of the concept
+          example: "Sum of the carrying amounts as of the balance sheet date of all assets that are recognized."
+        units:
+          type: object
+          description: Map of unit types to arrays of data points
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/ConceptDataPoint'
+
+    ConceptDataPoint:
+      type: object
+      description: A single data point for the concept
+      required:
+        - val
+        - accn
+        - fy
+        - fp
+        - form
+        - filed
+      properties:
+        start:
+          type: string
+          format: date
+          description: Start date of the period (for period-type facts)
+          example: "2024-01-01"
+        end:
+          type: string
+          format: date
+          description: End date of the period or point-in-time date
+          example: "2024-12-31"
+        val:
+          type: number
+          description: The numeric value of the concept
+          example: 11329000000
+        accn:
+          type: string
+          description: SEC Accession Number
+          example: "0001628280-25-010681"
+        fy:
+          type: integer
+          description: Fiscal year
+          example: 2024
+        fp:
+          type: string
+          description: Fiscal period (FY, Q1, Q2, Q3, Q4)
+          enum: [FY, Q1, Q2, Q3, Q4]
+          example: "FY"
+        form:
+          type: string
+          description: SEC form type
+          example: "40-F"
+        filed:
+          type: string
+          format: date
+          description: Date the form was filed
+          example: "2025-03-06"
+        frame:
+          type: string
+          description: XBRL reporting frame
+          example: "CY2024Q4I"
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Always false for error responses
+          example: false
+        message:
+          type: string
+          description: Error message describing what went wrong
+          example: "Concept not found"
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "NOT_FOUND"
+            details:
+              type: string
+              example: "No data found for concept us-gaap:Assets"
+
+  examples:
+    AssetsExample:
+      summary: Total Assets concept
+      value:
+        cik: "0002019061"
+        entityName: "SOUTH BOW CORPORATION"
+        taxonomy: "us-gaap"
+        tag: "Assets"
+        label: "Assets"
+        description: "Sum of the carrying amounts as of the balance sheet date of all assets that are recognized."
+        units:
+          USD:
+            - end: "2023-12-31"
+              val: 12032000000
+              accn: "0001628280-25-010681"
+              fy: 2024
+              fp: "FY"
+              form: "40-F"
+              filed: "2025-03-06"
+              frame: "CY2023Q4I"
+            - end: "2024-12-31"
+              val: 11329000000
+              accn: "0001628280-25-010681"
+              fy: 2024
+              fp: "FY"
+              form: "40-F"
+              filed: "2025-03-06"
+              frame: "CY2024Q4I"
+
+    RevenueExample:
+      summary: Revenue concept
+      value:
+        cik: "0002019061"
+        entityName: "SOUTH BOW CORPORATION"
+        taxonomy: "us-gaap"
+        tag: "Revenues"
+        label: "Revenues"
+        description: "Amount of revenue recognized from goods sold, services rendered, insurance premiums, or other activities."
+        units:
+          USD:
+            - start: "2023-01-01"
+              end: "2023-12-31"
+              val: 2005000000
+              accn: "0001628280-25-010681"
+              fy: 2024
+              fp: "FY"
+              form: "40-F"
+              filed: "2025-03-06"
+              frame: "CY2023"
+            - start: "2024-01-01"
+              end: "2024-12-31"
+              val: 2120000000
+              accn: "0001628280-25-010681"
+              fy: 2024
+              fp: "FY"
+              form: "40-F"
+              filed: "2025-03-06"
+              frame: "CY2024"
+
+# Common Financial Concepts Reference
+x-common-concepts:
+  description: |
+    Common financial concepts that can be retrieved using this endpoint.
+    Format: /api/xbrl/companyconcept/CIK{cik}/{taxonomy}/{tag}.json
+
+  balance-sheet:
+    assets:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/Assets.json
+        description: Total Assets
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AssetsCurrent.json
+        description: Current Assets
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AssetsNoncurrent.json
+        description: Non-current Assets
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CashAndCashEquivalentsAtCarryingValue.json
+        description: Cash and Cash Equivalents
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccountsReceivableNetCurrent.json
+        description: Accounts Receivable (Net, Current)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/InventoryNet.json
+        description: Inventory (Net)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PrepaidExpenseCurrent.json
+        description: Prepaid Expenses (Current)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PropertyPlantAndEquipmentNet.json
+        description: Property, Plant and Equipment (Net)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/Goodwill.json
+        description: Goodwill
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IntangibleAssetsNetExcludingGoodwill.json
+        description: Intangible Assets (Net, Excluding Goodwill)
+
+    liabilities:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/Liabilities.json
+        description: Total Liabilities
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LiabilitiesCurrent.json
+        description: Current Liabilities
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccountsPayableCurrent.json
+        description: Accounts Payable (Current)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccountsPayableTradeCurrent.json
+        description: Accounts Payable, Trade (Current)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccruedIncomeTaxesCurrent.json
+        description: Accrued Income Taxes (Current)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LongTermDebt.json
+        description: Long-term Debt
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LongTermDebtNoncurrent.json
+        description: Long-term Debt (Non-current)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/DeferredIncomeTaxLiabilitiesNet.json
+        description: Deferred Tax Liabilities (Net)
+
+    equity:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/StockholdersEquity.json
+        description: Stockholders' Equity
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CommonStockValue.json
+        description: Common Stock Value
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AdditionalPaidInCapital.json
+        description: Additional Paid-in Capital
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/RetainedEarningsAccumulatedDeficit.json
+        description: Retained Earnings (Accumulated Deficit)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/AccumulatedOtherComprehensiveIncomeLossNetOfTax.json
+        description: Accumulated Other Comprehensive Income (Loss)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/TreasuryStockValue.json
+        description: Treasury Stock Value
+
+  income-statement:
+    revenue:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/Revenues.json
+        description: Total Revenues
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/RevenueFromContractWithCustomerExcludingAssessedTax.json
+        description: Revenue from Contracts with Customers
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/SalesRevenueNet.json
+        description: Sales Revenue (Net)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/InterestIncomeOther.json
+        description: Interest Income (Other)
+
+    expenses:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CostOfGoodsAndServicesSold.json
+        description: Cost of Goods and Services Sold
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CostsAndExpenses.json
+        description: Total Costs and Expenses
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/OperatingCostsAndExpenses.json
+        description: Operating Costs and Expenses
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/SellingGeneralAndAdministrativeExpense.json
+        description: Selling, General and Administrative Expenses
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ResearchAndDevelopmentExpense.json
+        description: Research and Development Expenses
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/DepreciationDepletionAndAmortization.json
+        description: Depreciation, Depletion and Amortization
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/InterestExpense.json
+        description: Interest Expense
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncomeTaxExpenseBenefit.json
+        description: Income Tax Expense (Benefit)
+
+    income:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/GrossProfit.json
+        description: Gross Profit
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/OperatingIncomeLoss.json
+        description: Operating Income (Loss)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest.json
+        description: Income Before Taxes
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NetIncomeLoss.json
+        description: Net Income (Loss)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/EarningsPerShareBasic.json
+        description: Earnings Per Share (Basic)
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/EarningsPerShareDiluted.json
+        description: Earnings Per Share (Diluted)
+
+  cash-flow:
+    operating:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NetCashProvidedByUsedInOperatingActivities.json
+        description: Net Cash from Operating Activities
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/DepreciationDepletionAndAmortization.json
+        description: Depreciation, Depletion and Amortization
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncreaseDecreaseInAccountsReceivable.json
+        description: Change in Accounts Receivable
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncreaseDecreaseInInventories.json
+        description: Change in Inventories
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/IncreaseDecreaseInAccountsPayable.json
+        description: Change in Accounts Payable
+
+    investing:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NetCashProvidedByUsedInInvestingActivities.json
+        description: Net Cash from Investing Activities
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PaymentsToAcquirePropertyPlantAndEquipment.json
+        description: Capital Expenditures
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ProceedsFromSaleOfPropertyPlantAndEquipment.json
+        description: Proceeds from Sale of PP&E
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PaymentsToAcquireBusinessesNetOfCashAcquired.json
+        description: Acquisitions (Net of Cash)
+
+    financing:
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NetCashProvidedByUsedInFinancingActivities.json
+        description: Net Cash from Financing Activities
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ProceedsFromIssuanceOfCommonStock.json
+        description: Proceeds from Issuance of Common Stock
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/PaymentsOfDividends.json
+        description: Dividends Paid
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/RepaymentsOfLongTermDebt.json
+        description: Repayment of Long-term Debt
+      - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ProceedsFromIssuanceOfLongTermDebt.json
+        description: Proceeds from Long-term Debt
+
+  shares-and-equity:
+    - path: /api/xbrl/companyconcept/CIK0002019061/dei/EntityCommonStockSharesOutstanding.json
+      description: Common Stock Shares Outstanding
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CommonStockSharesIssued.json
+      description: Common Stock Shares Issued
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CommonStockSharesOutstanding.json
+      description: Common Stock Shares Outstanding
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/WeightedAverageNumberOfSharesOutstandingBasic.json
+      description: Weighted Average Shares Outstanding (Basic)
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding.json
+      description: Weighted Average Shares Outstanding (Diluted)
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CommonStockDividendsPerShareDeclared.json
+      description: Dividends Per Share Declared
+
+  ratios-and-metrics:
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/WorkingCapital.json
+      description: Working Capital
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/BookValuePerShare.json
+      description: Book Value Per Share
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/DebtToEquityRatio.json
+      description: Debt to Equity Ratio
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/CurrentRatio.json
+      description: Current Ratio
+
+  segment-and-geographic:
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NumberOfReportableSegments.json
+      description: Number of Reportable Segments
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/NumberOfOperatingSegments.json
+      description: Number of Operating Segments
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/RevenueFromExternalCustomersByGeographicAreas.json
+      description: Revenue by Geographic Areas
+
+  employee-and-compensation:
+    - path: /api/xbrl/companyconcept/CIK0002019061/dei/EntityNumberOfEmployees.json
+      description: Number of Employees
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LaborAndRelatedExpense.json
+      description: Labor and Related Expenses
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/ShareBasedCompensation.json
+      description: Share-based Compensation Expense
+
+  commitments-and-contingencies:
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LongTermPurchaseCommitmentAmount.json
+      description: Long-term Purchase Commitments
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/OperatingLeasesFutureMinimumPaymentsDue.json
+      description: Operating Lease Future Payments
+    - path: /api/xbrl/companyconcept/CIK0002019061/us-gaap/LossContingencyAccrualAtCarryingValue.json
+      description: Loss Contingency Accrual
