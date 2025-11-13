@@ -206,9 +206,9 @@ export async function analyzeSpinoffWithGemini(
         recentFilings
       });
 
-      // Use Gemini 2.0 Flash with comprehensive real data
+      // Use Gemini 1.5 Flash with comprehensive real data
       response = await genAI.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.5-flash-lite',
         contents: [{ role: 'user', parts: [{ text: promptWithRealData }] }],
         generationConfig: {
           temperature: 0.7,
