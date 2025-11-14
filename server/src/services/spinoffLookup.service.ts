@@ -70,10 +70,18 @@ export async function lookupSpinoff(ticker: string): Promise<SpinoffLookupResult
       config,
     });
 
-    const text = result.text;
+    // Extract text from the correct location in the response
+    let text: string | undefined;
+    
+    if (result.candidates && result.candidates.length > 0) {
+      const candidate = result.candidates[0];
+      if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+        text = candidate.content.parts[0].text;
+      }
+    }
 
     if (!text) {
-      throw new Error("No response text received from Gemini API");
+      throw new Error("No response text received from Gemini API - model may have only performed search without generating response");
     }
 
     // Parse the response
@@ -131,13 +139,21 @@ Questions to answer:
 2. If yes, what is the parent company that spun it off?
 3. If yes, what is the parent company's ticker symbol?
 
-Return ONLY this JSON format (no markdown, no explanations):
+You MUST return a response in this EXACT JSON format (no other text, no explanations, no markdown):
 
 {
   "isSpinoff": true or false,
   "parentCompany": "Parent Company Name" or null,
   "parentTicker": "PARENT_TICKER" or null
-}`;
+}
+
+CRITICAL REQUIREMENTS:
+- Use the Google Search results to determine the answer
+- Always return the JSON structure above
+- Set isSpinoff to true only if you find evidence of a spinoff within the last 2 years
+- Return ONLY the JSON - no other text whatsoever
+
+Search comprehensively using Google Search, then provide your JSON response:`;
 }
 
 /**
@@ -151,12 +167,7 @@ function getDateTwoYearsAgo(): string {
 
 /**
  * Parses Gemini's spinoff lookup response
- *
- * Handles JSON parsing with fallback error handling:
- * - Removes markdown code block markers if present
- * - Validates response structure
- * - Returns error result if parsing fails
- *
+ * 
  * @param responseText - Raw text response from Gemini API
  * @param ticker - Ticker being looked up
  * @returns Parsed spinoff lookup result
@@ -166,34 +177,32 @@ function parseSpinoffLookupResponse(
   ticker: string
 ): SpinoffLookupResult {
   try {
-    // Remove markdown code blocks if present
-    let jsonText = responseText.trim();
+    // Clean up common markdown artifacts
+    const cleanedText = responseText
+      .trim()
+      .replace(/^```(?:json)?\s*\n?/i, "") // Remove opening code blocks
+      .replace(/\n?```\s*$/i, "")         // Remove closing code blocks
+      .trim();
 
-    // Remove ```json and ``` markers (more comprehensive)
-    jsonText = jsonText.replace(/^```json\s*\n?/i, "");
-    jsonText = jsonText.replace(/^```\s*\n?/i, ""); // Also handle plain ```
-    jsonText = jsonText.replace(/\n?```\s*$/i, "");
-    jsonText = jsonText.trim();
+    const parsed = JSON.parse(cleanedText);
 
-    const parsed = JSON.parse(jsonText);
-
-    // Validate structure
+    // Simple validation
     if (typeof parsed.isSpinoff !== "boolean") {
-      throw new Error("Invalid response structure: isSpinoff must be boolean");
+      throw new Error("Invalid response: isSpinoff must be boolean");
     }
 
     return {
       ticker: ticker.toUpperCase(),
       isSpinoff: parsed.isSpinoff,
-      parentCompany: parsed.parentCompany || null,
-      parentTicker: parsed.parentTicker ? parsed.parentTicker.toUpperCase() : null,
+      parentCompany: parsed.parentCompany?.trim() || null,
+      parentTicker: parsed.parentTicker?.toUpperCase().trim() || null,
       analyzedAt: new Date(),
     };
   } catch (error) {
-    console.error("Failed to parse Gemini spinoff lookup response:", responseText);
+    console.error(`Failed to parse Gemini response for ${ticker}:`, responseText);
     console.error("Parse error:", error);
 
-    // Return fallback result indicating lookup failed
+    // Return safe fallback
     return {
       ticker: ticker.toUpperCase(),
       isSpinoff: false,
