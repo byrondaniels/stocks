@@ -5,7 +5,7 @@
 
 import { Router, Request, Response } from "express";
 import { getFinancialMetrics } from "../services/sec/financial-metrics-service.js";
-import { validateTicker } from "../middleware/tickerValidation.js";
+import { validateTickerParam } from "../middleware/tickerValidation.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../constants.js";
 
 const router = Router();
@@ -38,7 +38,7 @@ const router = Router();
  */
 router.get(
   "/:ticker",
-  validateTicker,
+  validateTickerParam,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { ticker } = req.params;
