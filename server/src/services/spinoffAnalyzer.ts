@@ -161,12 +161,14 @@ export async function analyzeSpinoffWithGemini(
       console.log(`[Spinoff] Retrieving SEC data for ${ticker}...`);
 
       // Step 1: Search for the company
+      console.log(`[Spinoff] MCP Call: search_company with query: ${ticker}`);
       const searchResult = await mcpClient.callTool({
         name: 'search_company',
         arguments: { query: ticker }
       });
 
       const searchData = JSON.parse(searchResult.content[0]?.text || '{}');
+      console.log(`[Spinoff] MCP Response: search_company`, JSON.stringify(searchData, null, 2));
       if (!searchData.success || !searchData.data.length) {
         throw new Error(`Company not found for ticker: ${ticker}`);
       }
@@ -175,12 +177,14 @@ export async function analyzeSpinoffWithGemini(
       console.log(`[Spinoff] Found ${company.name} (CIK: ${company.cik})`);
 
       // Step 2: Get real financial data from SEC
+      console.log(`[Spinoff] MCP Call: get_company_facts with CIK: ${company.cik}`);
       const factsResult = await mcpClient.callTool({
         name: 'get_company_facts',
         arguments: { cik: company.cik }
       });
 
       const factsData = JSON.parse(factsResult.content[0]?.text || '{}');
+      console.log(`[Spinoff] MCP Response: get_company_facts`, JSON.stringify(factsData, null, 2));
       if (!factsData.success) {
         throw new Error(`Failed to get company facts: ${factsData.error}`);
       }
@@ -188,6 +192,7 @@ export async function analyzeSpinoffWithGemini(
       const keyMetrics = factsData.data.keyMetrics;
 
       // Step 3: Get recent filings for additional context
+      console.log(`[Spinoff] MCP Call: get_filings with CIK: ${company.cik}, form: 10-K, count: 2`);
       const filingsResult = await mcpClient.callTool({
         name: 'get_filings',
         arguments: {
@@ -198,6 +203,7 @@ export async function analyzeSpinoffWithGemini(
       });
 
       const filingsData = JSON.parse(filingsResult.content[0]?.text || '{}');
+      console.log(`[Spinoff] MCP Response: get_filings`, JSON.stringify(filingsData, null, 2));
       const recentFilings = filingsData.success ? filingsData.data : [];
 
       // Step 4: Build comprehensive prompt with real SEC data
