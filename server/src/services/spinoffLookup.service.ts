@@ -4,11 +4,12 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { SpinoffLookupModel, ISpinoffLookupDocument } from "../db/models/SpinoffLookup.model.js";
+import { SpinoffLookupModel, ISpinoffLookupDocument } from "../db";
 
 // Initialize Gemini AI
 const genAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || ""
+  apiKey: process.env.GEMINI_API_KEY || "",
+  apiVersion: "v1alpha"
 });
 
 /**
@@ -57,17 +58,16 @@ export async function lookupSpinoff(ticker: string): Promise<SpinoffLookupResult
 
   try {
     const prompt = buildSpinoffLookupPrompt(normalizedTicker);
+    const config = {
+      tools: [{
+        googleSearch: {}
+      }]
+    };
 
-    // Call Gemini with Google Search grounding enabled
-    // Use the models API directly with tools parameter for grounding
     const result = await genAI.models.generateContent({
-      model: "gemini-1.5-pro-latest",
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      tools: [
-        {
-          googleSearch: {}, // Enable live Google Search grounding
-        },
-      ],
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config,
     });
 
     const text = result.text;
@@ -95,7 +95,9 @@ export async function lookupSpinoff(ticker: string): Promise<SpinoffLookupResult
     return lookupResult;
   } catch (error) {
     console.error(`Error looking up spinoff for ${normalizedTicker}:`, error);
-    throw new Error(`Failed to lookup spinoff: ${error}`);
+    // Ensure the original error message is correctly surfaced if it's the API error
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to lookup spinoff: ${errorMessage}`);
   }
 }
 
@@ -111,29 +113,31 @@ export async function lookupSpinoff(ticker: string): Promise<SpinoffLookupResult
  * @returns Formatted prompt for Gemini API with grounding
  */
 function buildSpinoffLookupPrompt(ticker: string): string {
-  return `Use Google Search to answer the following questions about stock ticker ${ticker}:
+  return `Stock ticker: ${ticker}
 
-1. Is ${ticker} a spinoff company that was spun off within the last 2 years (since ${getDateTwoYearsAgo()})?
-2. If yes, what is the name of the parent company that ${ticker} was spun off from?
-3. If yes, what is the NYSE or NASDAQ ticker symbol for the parent company?
+Please search Google extensively to find information about this ticker and determine if it's a recent spinoff. Try multiple search approaches:
 
-Return your answer in the following JSON format:
+Search strategies to use:
+1. "${ticker} stock ticker company"
+2. "${ticker} NYSE NASDAQ TSX"
+3. "${ticker} spinoff"
+4. "${ticker} spun off"
+5. "${ticker} parent company"
+
+If initial searches don't return clear results, try broader searches and look for any company that might trade under this ticker symbol.
+
+Questions to answer:
+1. Is ${ticker} a spinoff that occurred within the last 2 years (since ${getDateTwoYearsAgo()})?
+2. If yes, what is the parent company that spun it off?
+3. If yes, what is the parent company's ticker symbol?
+
+Return ONLY this JSON format (no markdown, no explanations):
 
 {
   "isSpinoff": true or false,
   "parentCompany": "Parent Company Name" or null,
-  "parentTicker": "TICKER" or null
-}
-
-Rules:
-- Set isSpinoff to true ONLY if ${ticker} was spun off within the last 2 years
-- If isSpinoff is false, set both parentCompany and parentTicker to null
-- If isSpinoff is true, provide both the parent company name and its ticker symbol
-- Parent ticker should be the NYSE/NASDAQ ticker (uppercase letters only)
-- Use Google Search to find accurate, current information
-- Return ONLY valid JSON, no additional text
-
-Provide ONLY the JSON response, no markdown code blocks or additional text.`;
+  "parentTicker": "PARENT_TICKER" or null
+}`;
 }
 
 /**
@@ -165,8 +169,9 @@ function parseSpinoffLookupResponse(
     // Remove markdown code blocks if present
     let jsonText = responseText.trim();
 
-    // Remove ```json and ``` markers
+    // Remove ```json and ``` markers (more comprehensive)
     jsonText = jsonText.replace(/^```json\s*\n?/i, "");
+    jsonText = jsonText.replace(/^```\s*\n?/i, ""); // Also handle plain ```
     jsonText = jsonText.replace(/\n?```\s*$/i, "");
     jsonText = jsonText.trim();
 
@@ -197,23 +202,4 @@ function parseSpinoffLookupResponse(
       analyzedAt: new Date(),
     };
   }
-}
-
-/**
- * Gets spinoff lookup data from database (if exists)
- *
- * @param ticker - Stock ticker symbol
- * @returns Spinoff lookup result from database or null if not found
- *
- * @example
- * const cached = await getSpinoffLookupFromDB('AAPL');
- * if (cached) {
- *   console.log('Found in database:', cached.isSpinoff);
- * }
- */
-export async function getSpinoffLookupFromDB(
-  ticker: string
-): Promise<ISpinoffLookupDocument | null> {
-  const normalizedTicker = ticker.toUpperCase().trim();
-  return await SpinoffLookupModel.findOne({ ticker: normalizedTicker });
 }
