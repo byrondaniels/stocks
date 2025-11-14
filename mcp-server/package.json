@@ -1,0 +1,24 @@
+{
+  "name": "sec-edgar-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server providing SEC EDGAR tools for spinoff analysis",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "fastmcp": "^1.27.7",
+    "node-fetch": "^3.3.2",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/xml2js": "^0.4.14",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.2"
+  }
+}
