@@ -13,3 +13,4 @@ export * from "./SECCompanyFacts.model.ts";
 export * from "./FinancialRatios.model.ts";
 export * from "./SpinoffAnalysis.model.ts";
 export * from "./SpinoffLookup.model.ts";
+export * from "./SpinoffQualityAnalysis.model.ts";

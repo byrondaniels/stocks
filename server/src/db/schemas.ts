@@ -501,3 +501,37 @@ export const FinancialRatiosSchema = new Schema(
 FinancialRatiosSchema.index({ ticker: 1 });
 FinancialRatiosSchema.index({ cik: 1 });
 FinancialRatiosSchema.index({ calculatedAt: -1 });
+
+/**
+ * Spinoff Quality Analysis Collection Schema
+ * Stores comprehensive spinoff quality evaluation results
+ */
+export const SpinoffQualityAnalysisSchema = new Schema(
+  {
+    ticker: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+    },
+    analysis: {
+      type: Schema.Types.Mixed, // Stores complete SpinoffQualityAnalysis object
+      required: true,
+    },
+    timestamp: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: false,
+  }
+);
+
+// Index for efficient queries
+SpinoffQualityAnalysisSchema.index({ ticker: 1 });
+SpinoffQualityAnalysisSchema.index({ timestamp: -1 });
+
+// TTL index - automatically delete documents after 24 hours (quality data changes frequently)
+SpinoffQualityAnalysisSchema.index({ timestamp: 1 }, { expireAfterSeconds: 86400 });

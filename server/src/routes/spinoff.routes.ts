@@ -6,6 +6,7 @@
 import { Request, Response as ExpressResponse, Router } from "express";
 import { analyzeSpinoffWithGemini } from "../services/spinoffAnalyzer.js";
 import { lookupSpinoff } from "../services/spinoffLookup.service.js";
+import { analyzeSpinoffQuality } from "../services/spinoffQualityAnalysis.service.js";
 import { ERROR_MESSAGES } from "../constants.js";
 import { normalizeTicker, isValidTicker } from "../../../shared/validation.js";
 import { handleApiError, sendBadRequest } from "../utils/errorHandler.js";
@@ -125,6 +126,35 @@ router.get("/lookup", async (req: Request, res: ExpressResponse) => {
   } catch (error) {
     console.error("Error looking up spinoff:", error);
     handleApiError(res, error, "Unable to lookup spinoff information. Please try again later.");
+  }
+});
+
+/**
+ * GET /api/spinoff/quality-analysis?ticker=SOBO
+ * Get comprehensive spinoff quality analysis
+ * Evaluates parent company quality, business quality, and financial structure
+ * No caching - always performs fresh analysis
+ */
+router.get("/quality-analysis", async (req: Request, res: ExpressResponse) => {
+  const rawTicker = (req.query.ticker as string | undefined) ?? "";
+  const ticker = normalizeTicker(rawTicker);
+
+  if (!ticker || !isValidTicker(ticker)) {
+    sendBadRequest(res, ERROR_MESSAGES.INVALID_TICKER);
+    return;
+  }
+
+  try {
+    console.log(`[Spinoff Quality Analysis] Analyzing ${ticker}`);
+    const analysis = await analyzeSpinoffQuality(ticker);
+
+    res.json({
+      success: true,
+      data: analysis,
+    });
+  } catch (error) {
+    console.error("Error analyzing spinoff quality:", error);
+    handleApiError(res, error, "Unable to perform spinoff quality analysis. Please try again later.");
   }
 });
 
