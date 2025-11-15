@@ -88,3 +88,49 @@ export async function fetchYahooHistorical(
     throw apiError;
   }
 }
+
+/**
+ * Company summary information from Yahoo Finance
+ */
+export interface YahooCompanySummary {
+  ticker: string;
+  marketCap: number | null;
+  marketCapBillions: number | null;
+  sharesOutstanding: number | null;
+  revenue: number | null;
+  revenueMillions: number | null;
+  timestamp: string;
+}
+
+/**
+ * Fetch company summary data including market cap from Yahoo Finance
+ */
+export async function fetchYahooCompanySummary(ticker: string): Promise<YahooCompanySummary> {
+  try {
+    const quote: any = await yf.quote(ticker);
+
+    if (!quote) {
+      throw new Error('Ticker not found or no data available');
+    }
+
+    const marketCap = quote.marketCap || null;
+    const sharesOutstanding = quote.sharesOutstanding || null;
+    const revenue = quote.trailingAnnualRevenue || null;
+
+    return {
+      ticker: ticker.toUpperCase(),
+      marketCap,
+      marketCapBillions: marketCap ? marketCap / 1_000_000_000 : null,
+      sharesOutstanding,
+      revenue,
+      revenueMillions: revenue ? revenue / 1_000_000 : null,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    const apiError: ApiError = {
+      message: error.message || 'Yahoo Finance API error',
+      code: 'API_ERROR',
+    };
+    throw apiError;
+  }
+}

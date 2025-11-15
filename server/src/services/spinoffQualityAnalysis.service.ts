@@ -1,65 +1,57 @@
 /**
  * Spinoff Quality Analysis Service
  * Evaluates spinoff opportunities based on parent company quality, business quality, and financial structure
+ * Returns boolean criteria indicating whether each requirement is met
  */
 
 import { getFinancialMetrics } from "./sec/financial-metrics-service.js";
-import { fetchFMPProfile, fetchFMPQuote } from "./stock-data/fmp.js";
+import { fetchFMPProfile } from "./stock-data/fmp.js";
+import { fetchYahooCompanySummary } from "./stock-data/yahoo-finance.js";
 import { lookupSpinoff } from "./spinoffLookup.service.js";
 import { callGeminiJSON } from "../utils/gemini.utils.js";
 
 /**
- * Parent company quality evaluation
+ * Parent company quality evaluation - boolean criteria
  */
 export interface ParentCompanyQuality {
-  /** Market cap > $5B (in billions, null if not available) */
-  marketCapBillions: number | null;
-  /** Annual free cash flow > $500M (in millions, null if not available) */
-  freeCashFlowMillions: number | null;
-  /** Meets market cap or FCF threshold */
-  meetsThreshold: boolean | null;
-  /** Has positive free cash flow in last 12 months */
-  positiveFCF: boolean | null;
-  /** Management has successful operational track record (AI-evaluated, null if not available) */
-  managementTrackRecord: string | null;
-  /** Clear strategic rationale for separation (AI-evaluated, null if not available) */
-  strategicRationale: string | null;
+  /** Market cap > $5B OR free cash flow > $500M */
+  meetsCapitalThreshold: boolean | null;
+  /** Positive free cash flow in last 12 months */
+  hasPositiveFCF: boolean | null;
+  /** Management with successful operational track record */
+  hasStrongManagement: boolean | null;
+  /** Clear strategic rationale (focus/value unlock, NOT distress) */
+  hasHealthyRationale: boolean | null;
 }
 
 /**
- * Business quality evaluation
+ * Business quality evaluation - boolean criteria
  */
 export interface BusinessQuality {
-  /** Current annual revenue in millions */
-  revenueMillions: number | null;
-  /** Revenue meets $500M threshold */
+  /** Annual revenue > $500M */
   meetsRevenueThreshold: boolean | null;
-  /** Market position (AI-evaluated: "Leading", "#2-3", "Lower", null if not available) */
-  marketPosition: string | null;
-  /** Country of operations */
-  country: string | null;
-  /** Located in stable developed market (US, Canada, EU, Australia, Japan) */
+  /** Market-leading or strong #2-3 position in industry */
+  hasStrongMarketPosition: boolean | null;
+  /** Located in stable developed markets (US, Canada, EU, Australia, Japan) */
   inStableMarket: boolean | null;
-  /** Can operate independently from day 1 (AI-evaluated, null if not available) */
-  standaloneViability: string | null;
-  /** Has defensible competitive moats (AI-evaluated, null if not available) */
-  competitiveMoats: string | null;
+  /** Can operate independently from day 1 */
+  hasStandaloneViability: boolean | null;
+  /** Has defensible competitive moats */
+  hasCompetitiveMoats: boolean | null;
 }
 
 /**
- * Financial structure evaluation
+ * Financial structure evaluation - boolean criteria
  */
 export interface FinancialStructure {
-  /** Debt to EBITDA ratio (null if EBITDA not available) */
-  debtToEBITDA: number | null;
-  /** Meets debt/EBITDA < 4x threshold */
+  /** Debt/EBITDA ratio < 4x */
   meetsDebtThreshold: boolean | null;
-  /** Estimated cash runway in months (null - not currently available) */
-  cashRunwayMonths: number | null;
-  /** Capital requirements assessment (AI-evaluated, null if not available) */
-  capitalRequirements: string | null;
-  /** Debt structure assessment (AI-evaluated for poison pills, null if not available) */
-  debtStructure: string | null;
+  /** At least 12 months cash runway */
+  hasSufficientCashRunway: boolean | null;
+  /** Capital requirements clearly defined and manageable */
+  hasManageableCapitalRequirements: boolean | null;
+  /** No poison pill debt structures or onerous parent guarantees */
+  hasCleanDebtStructure: boolean | null;
 }
 
 /**
@@ -74,7 +66,9 @@ export interface SpinoffQualityAnalysis {
   parentCompanyQuality: ParentCompanyQuality;
   businessQuality: BusinessQuality;
   financialStructure: FinancialStructure;
-  overallScore: number; // 0-100 based on available criteria
+  criteriaMetCount: number; // Number of criteria that are true
+  criteriaTotalCount: number; // Total number of non-null criteria
+  passPercentage: number; // Percentage of criteria met (0-100)
   overallRating: "Strong" | "Moderate" | "Weak" | "Insufficient Data";
   analyzedAt: Date;
 }
@@ -116,17 +110,17 @@ function getLatestValue(metrics: Record<string, number> | undefined): number | n
  * - Business quality metrics
  * - Financial structure health
  *
- * Note: Some fields return null when data is not currently available through APIs.
- * Fields marked as "AI-evaluated" use Gemini AI for qualitative assessment.
+ * Returns boolean values for each criterion indicating whether it's met.
+ * Note: Some fields return null when data is not currently available.
  *
  * @param ticker - Stock ticker symbol to analyze
- * @returns Complete quality analysis with scores and ratings
+ * @returns Complete quality analysis with boolean criteria
  * @throws {Error} If ticker is invalid or required data cannot be fetched
  *
  * @example
  * const analysis = await analyzeSpinoffQuality('SOBO');
  * console.log(analysis.overallRating);  // "Strong"
- * console.log(analysis.businessQuality.revenueMillions);  // 650
+ * console.log(analysis.businessQuality.meetsRevenueThreshold);  // true
  */
 export async function analyzeSpinoffQuality(ticker: string): Promise<SpinoffQualityAnalysis> {
   const normalizedTicker = ticker.toUpperCase().trim();
@@ -136,7 +130,16 @@ export async function analyzeSpinoffQuality(ticker: string): Promise<SpinoffQual
   // Step 1: Look up spinoff information
   const spinoffInfo = await lookupSpinoff(normalizedTicker);
 
-  // Step 2: Fetch financial metrics from SEC
+  // Step 2: Fetch Yahoo Finance company summary (market cap, revenue)
+  let yahooSummary;
+  try {
+    yahooSummary = await fetchYahooCompanySummary(normalizedTicker);
+  } catch (error) {
+    console.error(`[Spinoff Quality] Error fetching Yahoo summary:`, error);
+    yahooSummary = null;
+  }
+
+  // Step 3: Fetch financial metrics from SEC
   let financialMetrics;
   try {
     financialMetrics = await getFinancialMetrics(normalizedTicker);
@@ -145,7 +148,7 @@ export async function analyzeSpinoffQuality(ticker: string): Promise<SpinoffQual
     financialMetrics = null;
   }
 
-  // Step 3: Fetch company profile from FMP
+  // Step 4: Fetch company profile from FMP
   let companyProfile;
   try {
     companyProfile = await fetchFMPProfile(normalizedTicker);
@@ -154,35 +157,24 @@ export async function analyzeSpinoffQuality(ticker: string): Promise<SpinoffQual
     companyProfile = null;
   }
 
-  // Step 4: Fetch current market data for market cap calculation
-  let marketData;
-  try {
-    marketData = await fetchFMPQuote(normalizedTicker);
-  } catch (error) {
-    console.error(`[Spinoff Quality] Error fetching market data:`, error);
-    marketData = null;
-  }
-
   // Step 5: Analyze parent company if this is a spinoff
   let parentAnalysis: ParentCompanyQuality | null = null;
   if (spinoffInfo.isSpinoff && spinoffInfo.parentTicker) {
     parentAnalysis = await analyzeParentCompany(spinoffInfo.parentTicker);
   } else {
-    // Default parent quality for non-spinoffs
+    // Default parent quality for non-spinoffs (all null)
     parentAnalysis = {
-      marketCapBillions: null,
-      freeCashFlowMillions: null,
-      meetsThreshold: null,
-      positiveFCF: null,
-      managementTrackRecord: null,
-      strategicRationale: null,
+      meetsCapitalThreshold: null,
+      hasPositiveFCF: null,
+      hasStrongManagement: null,
+      hasHealthyRationale: null,
     };
   }
 
   // Step 6: Evaluate business quality
   const businessQuality = evaluateBusinessQuality(
     normalizedTicker,
-    financialMetrics,
+    yahooSummary,
     companyProfile
   );
 
@@ -192,7 +184,7 @@ export async function analyzeSpinoffQuality(ticker: string): Promise<SpinoffQual
     financialMetrics
   );
 
-  // Step 8: Use Gemini AI for qualitative assessments (market position, moats, etc.)
+  // Step 8: Use Gemini AI for qualitative boolean assessments
   const qualitativeAnalysis = await getQualitativeAnalysis(
     normalizedTicker,
     companyProfile?.name || normalizedTicker,
@@ -203,19 +195,19 @@ export async function analyzeSpinoffQuality(ticker: string): Promise<SpinoffQual
 
   // Merge AI analysis into our results
   if (parentAnalysis && spinoffInfo.isSpinoff) {
-    parentAnalysis.managementTrackRecord = qualitativeAnalysis.managementTrackRecord;
-    parentAnalysis.strategicRationale = qualitativeAnalysis.strategicRationale;
+    parentAnalysis.hasStrongManagement = qualitativeAnalysis.hasStrongManagement;
+    parentAnalysis.hasHealthyRationale = qualitativeAnalysis.hasHealthyRationale;
   }
 
-  businessQuality.marketPosition = qualitativeAnalysis.marketPosition;
-  businessQuality.standaloneViability = qualitativeAnalysis.standaloneViability;
-  businessQuality.competitiveMoats = qualitativeAnalysis.competitiveMoats;
+  businessQuality.hasStrongMarketPosition = qualitativeAnalysis.hasStrongMarketPosition;
+  businessQuality.hasStandaloneViability = qualitativeAnalysis.hasStandaloneViability;
+  businessQuality.hasCompetitiveMoats = qualitativeAnalysis.hasCompetitiveMoats;
 
-  financialStructure.capitalRequirements = qualitativeAnalysis.capitalRequirements;
-  financialStructure.debtStructure = qualitativeAnalysis.debtStructure;
+  financialStructure.hasManageableCapitalRequirements = qualitativeAnalysis.hasManageableCapitalRequirements;
+  financialStructure.hasCleanDebtStructure = qualitativeAnalysis.hasCleanDebtStructure;
 
   // Step 9: Calculate overall score and rating
-  const { score, rating } = calculateOverallScore(
+  const { metCount, totalCount, passPercentage, rating } = calculateOverallScore(
     parentAnalysis,
     businessQuality,
     financialStructure,
@@ -231,7 +223,9 @@ export async function analyzeSpinoffQuality(ticker: string): Promise<SpinoffQual
     parentCompanyQuality: parentAnalysis,
     businessQuality,
     financialStructure,
-    overallScore: score,
+    criteriaMetCount: metCount,
+    criteriaTotalCount: totalCount,
+    passPercentage,
     overallRating: rating,
     analyzedAt: new Date(),
   };
@@ -243,7 +237,16 @@ export async function analyzeSpinoffQuality(ticker: string): Promise<SpinoffQual
 async function analyzeParentCompany(parentTicker: string): Promise<ParentCompanyQuality> {
   console.log(`[Spinoff Quality] Analyzing parent company ${parentTicker}`);
 
-  // Fetch parent financial metrics
+  // Fetch parent Yahoo summary for market cap
+  let parentYahoo;
+  try {
+    parentYahoo = await fetchYahooCompanySummary(parentTicker);
+  } catch (error) {
+    console.error(`[Spinoff Quality] Error fetching parent Yahoo data:`, error);
+    parentYahoo = null;
+  }
+
+  // Fetch parent financial metrics for FCF
   let parentMetrics;
   try {
     parentMetrics = await getFinancialMetrics(parentTicker);
@@ -252,43 +255,28 @@ async function analyzeParentCompany(parentTicker: string): Promise<ParentCompany
     parentMetrics = null;
   }
 
-  // Fetch parent market data for market cap
-  let parentMarketData;
-  try {
-    parentMarketData = await fetchFMPQuote(parentTicker);
-  } catch (error) {
-    console.error(`[Spinoff Quality] Error fetching parent market data:`, error);
-    parentMarketData = null;
-  }
-
-  // Calculate market cap (price * volume is a rough proxy, but we'd need shares outstanding)
-  // For now, we'll mark this as null since we don't have shares outstanding
-  const marketCapBillions: number | null = null;
-
-  // Get free cash flow from SEC data
+  // Check market cap > $5B OR FCF > $500M
+  const marketCapBillions = parentYahoo?.marketCapBillions ?? null;
   const freeCashFlow = getLatestValue(parentMetrics?.metrics.freeCashFlow);
   const freeCashFlowMillions = freeCashFlow ? freeCashFlow / 1_000_000 : null;
 
-  // Check if meets threshold (either market cap > $5B OR FCF > $500M)
-  let meetsThreshold: boolean | null = null;
+  let meetsCapitalThreshold: boolean | null = null;
   if (marketCapBillions !== null && marketCapBillions > 5) {
-    meetsThreshold = true;
+    meetsCapitalThreshold = true;
   } else if (freeCashFlowMillions !== null && freeCashFlowMillions > 500) {
-    meetsThreshold = true;
+    meetsCapitalThreshold = true;
   } else if (marketCapBillions !== null || freeCashFlowMillions !== null) {
-    meetsThreshold = false;
+    meetsCapitalThreshold = false;
   }
 
   // Check for positive FCF
-  const positiveFCF = freeCashFlowMillions !== null ? freeCashFlowMillions > 0 : null;
+  const hasPositiveFCF = freeCashFlowMillions !== null ? freeCashFlowMillions > 0 : null;
 
   return {
-    marketCapBillions,
-    freeCashFlowMillions,
-    meetsThreshold,
-    positiveFCF,
-    managementTrackRecord: null, // Will be filled by AI analysis
-    strategicRationale: null, // Will be filled by AI analysis
+    meetsCapitalThreshold,
+    hasPositiveFCF,
+    hasStrongManagement: null, // Will be filled by AI analysis
+    hasHealthyRationale: null, // Will be filled by AI analysis
   };
 }
 
@@ -297,16 +285,13 @@ async function analyzeParentCompany(parentTicker: string): Promise<ParentCompany
  */
 function evaluateBusinessQuality(
   ticker: string,
-  financialMetrics: any,
+  yahooSummary: any,
   companyProfile: any
 ): BusinessQuality {
   console.log(`[Spinoff Quality] Evaluating business quality for ${ticker}`);
 
-  // Get revenue from SEC data (using various revenue fields)
-  // SEC data uses "Revenues" or "RevenueFromContractWithCustomerExcludingAssessedTax"
-  // For now, we'll mark as null since we need to calculate it from raw SEC data
-  const revenueMillions: number | null = null;
-
+  // Check revenue > $500M from Yahoo Finance
+  const revenueMillions = yahooSummary?.revenueMillions ?? null;
   const meetsRevenueThreshold = revenueMillions !== null ? revenueMillions > 500 : null;
 
   // Get country from FMP profile
@@ -314,13 +299,11 @@ function evaluateBusinessQuality(
   const inStableMarket = isStableDevelopedMarket(country);
 
   return {
-    revenueMillions,
     meetsRevenueThreshold,
-    marketPosition: null, // Will be filled by AI analysis
-    country,
+    hasStrongMarketPosition: null, // Will be filled by AI analysis
     inStableMarket,
-    standaloneViability: null, // Will be filled by AI analysis
-    competitiveMoats: null, // Will be filled by AI analysis
+    hasStandaloneViability: null, // Will be filled by AI analysis
+    hasCompetitiveMoats: null, // Will be filled by AI analysis
   };
 }
 
@@ -333,37 +316,35 @@ function evaluateFinancialStructure(
 ): FinancialStructure {
   console.log(`[Spinoff Quality] Evaluating financial structure for ${ticker}`);
 
-  // Calculate Debt/EBITDA ratio
-  // We have debtToEquity from metrics, but not EBITDA directly
-  // EBITDA = Net Income + Interest + Taxes + Depreciation + Amortization
-  // For now, we'll use debt/equity as a proxy and note debt/EBITDA is not available
-  const debtToEBITDA: number | null = null;
-  const meetsDebtThreshold = debtToEBITDA !== null ? debtToEBITDA < 4 : null;
+  // Debt/EBITDA calculation not currently available - would need EBITDA from raw SEC data
+  const meetsDebtThreshold: boolean | null = null;
+
+  // Cash runway calculation not currently available - would need detailed cash flow analysis
+  const hasSufficientCashRunway: boolean | null = null;
 
   return {
-    debtToEBITDA,
     meetsDebtThreshold,
-    cashRunwayMonths: null, // Not currently available
-    capitalRequirements: null, // Will be filled by AI analysis
-    debtStructure: null, // Will be filled by AI analysis
+    hasSufficientCashRunway,
+    hasManageableCapitalRequirements: null, // Will be filled by AI analysis
+    hasCleanDebtStructure: null, // Will be filled by AI analysis
   };
 }
 
 /**
- * AI-powered qualitative analysis interface
+ * AI-powered qualitative analysis interface - boolean criteria
  */
 interface QualitativeAnalysis {
-  managementTrackRecord: string | null;
-  strategicRationale: string | null;
-  marketPosition: string | null;
-  standaloneViability: string | null;
-  competitiveMoats: string | null;
-  capitalRequirements: string | null;
-  debtStructure: string | null;
+  hasStrongManagement: boolean | null;
+  hasHealthyRationale: boolean | null;
+  hasStrongMarketPosition: boolean | null;
+  hasStandaloneViability: boolean | null;
+  hasCompetitiveMoats: boolean | null;
+  hasManageableCapitalRequirements: boolean | null;
+  hasCleanDebtStructure: boolean | null;
 }
 
 /**
- * Uses Gemini AI to perform qualitative analysis
+ * Uses Gemini AI to perform qualitative boolean analysis
  */
 async function getQualitativeAnalysis(
   ticker: string,
@@ -383,13 +364,13 @@ async function getQualitativeAnalysis(
   );
 
   const fallback: QualitativeAnalysis = {
-    managementTrackRecord: null,
-    strategicRationale: null,
-    marketPosition: null,
-    standaloneViability: null,
-    competitiveMoats: null,
-    capitalRequirements: null,
-    debtStructure: null,
+    hasStrongManagement: null,
+    hasHealthyRationale: null,
+    hasStrongMarketPosition: null,
+    hasStandaloneViability: null,
+    hasCompetitiveMoats: null,
+    hasManageableCapitalRequirements: null,
+    hasCleanDebtStructure: null,
   };
 
   try {
@@ -412,7 +393,7 @@ async function getQualitativeAnalysis(
 }
 
 /**
- * Builds prompt for Gemini AI qualitative analysis
+ * Builds prompt for Gemini AI qualitative boolean analysis
  */
 function buildQualitativeAnalysisPrompt(
   ticker: string,
@@ -430,160 +411,101 @@ function buildQualitativeAnalysisPrompt(
 
 ${parentInfo}
 
-Your task is to provide qualitative assessments for the following areas. Use web search to gather current, accurate information.
+Your task is to provide BOOLEAN (true/false) assessments for the following criteria. Use web search to gather current, accurate information.
 
 ${isSpinoff ? `
 **Parent Company Analysis (${spinoffInfo.parentTicker}):**
-1. **managementTrackRecord**: Evaluate the parent company's management team. Do they have a successful operational track record (not just financial engineering)? Provide a brief assessment (1-2 sentences) or null if insufficient data.
+1. **hasStrongManagement**: Does the parent company's management have a successful operational track record (not just financial engineering)? Return true if yes, false if no, null if insufficient data.
 
-2. **strategicRationale**: What is the strategic rationale for this spinoff? Is it to unlock value/increase focus, or is it due to financial distress? Provide a brief assessment (1-2 sentences) or null if insufficient data.
+2. **hasHealthyRationale**: Is the strategic rationale for this spinoff healthy (e.g., to unlock value, increase focus) rather than financial distress? Return true if healthy rationale, false if distress-driven, null if insufficient data.
 ` : ''}
 
 **Business Quality Analysis (${ticker}):**
-3. **marketPosition**: What is ${companyName}'s market position in its industry? Is it a market leader, strong #2-3 position, or lower? Answer with one of: "Leading", "#2-3", "Lower", or null if insufficient data.
+3. **hasStrongMarketPosition**: Is ${companyName} a market leader OR strong #2-3 position in its industry? Return true if leading or strong #2-3, false if lower position, null if insufficient data.
 
-4. **standaloneViability**: Can this company operate independently from day 1? Does it have its own operations, supply chain, and management? Provide a brief assessment (1-2 sentences) or null if insufficient data.
+4. **hasStandaloneViability**: Can this company operate independently from day 1 with its own operations, supply chain, and management? Return true if viable, false if dependent, null if insufficient data.
 
-5. **competitiveMoats**: What are the company's defensible competitive advantages or moats? (e.g., brand strength, network effects, regulatory barriers, patents, economies of scale). Provide a brief assessment (1-2 sentences) or null if insufficient data.
+5. **hasCompetitiveMoats**: Does the company have defensible competitive advantages (brand, network effects, regulatory barriers, patents, economies of scale)? Return true if has strong moats, false if weak/no moats, null if insufficient data.
 
 **Financial Structure Analysis:**
-6. **capitalRequirements**: What are the company's capital requirements? Are they clearly defined and manageable given the business model? Provide a brief assessment (1-2 sentences) or null if insufficient data.
+6. **hasManageableCapitalRequirements**: Are the company's capital requirements clearly defined and manageable given the business model? Return true if manageable, false if excessive/concerning, null if insufficient data.
 
-7. **debtStructure**: Analyze the debt structure. Are there any concerning "poison pill" debt structures, parent guarantees, or unusual financial obligations? Provide a brief assessment (1-2 sentences) or null if insufficient data.
+7. **hasCleanDebtStructure**: Is the debt structure clean without "poison pill" structures, parent guarantees, or unusual financial obligations? Return true if clean, false if concerning structures, null if insufficient data.
 
-Return your analysis as a JSON object with the following structure:
+Return your analysis as a JSON object with ONLY boolean or null values:
 {
-  ${isSpinoff ? `"managementTrackRecord": "string or null",
-  "strategicRationale": "string or null",
-  ` : `"managementTrackRecord": null,
-  "strategicRationale": null,
-  `}"marketPosition": "Leading" | "#2-3" | "Lower" | null,
-  "standaloneViability": "string or null",
-  "competitiveMoats": "string or null",
-  "capitalRequirements": "string or null",
-  "debtStructure": "string or null"
+  ${isSpinoff ? `"hasStrongManagement": true | false | null,
+  "hasHealthyRationale": true | false | null,
+  ` : `"hasStrongManagement": null,
+  "hasHealthyRationale": null,
+  `}"hasStrongMarketPosition": true | false | null,
+  "hasStandaloneViability": true | false | null,
+  "hasCompetitiveMoats": true | false | null,
+  "hasManageableCapitalRequirements": true | false | null,
+  "hasCleanDebtStructure": true | false | null
 }
 
-Be factual and objective. If you cannot find sufficient information for a field, return null for that field.`;
+IMPORTANT: Return ONLY boolean values (true/false) or null. Do not return strings or explanations.
+Be strict: only return true if the criterion is clearly met, false if clearly not met, null if you cannot determine.`;
 }
 
 /**
- * Calculates overall score and rating based on all criteria
+ * Calculates overall score and rating based on boolean criteria
  */
 function calculateOverallScore(
   parentQuality: ParentCompanyQuality | null,
   businessQuality: BusinessQuality,
   financialStructure: FinancialStructure,
   isSpinoff: boolean
-): { score: number; rating: "Strong" | "Moderate" | "Weak" | "Insufficient Data" } {
-  let totalPoints = 0;
-  let maxPoints = 0;
+): { metCount: number; totalCount: number; passPercentage: number; rating: "Strong" | "Moderate" | "Weak" | "Insufficient Data" } {
+  let metCount = 0;
+  let totalCount = 0;
+
+  // Helper to count boolean criteria
+  const countCriteria = (value: boolean | null) => {
+    if (value !== null) {
+      totalCount++;
+      if (value === true) {
+        metCount++;
+      }
+    }
+  };
 
   // Parent company criteria (only if this is a spinoff)
   if (isSpinoff && parentQuality) {
-    // Market cap or FCF threshold (10 points)
-    maxPoints += 10;
-    if (parentQuality.meetsThreshold === true) totalPoints += 10;
-    else if (parentQuality.meetsThreshold === false) totalPoints += 0;
-
-    // Positive FCF (10 points)
-    maxPoints += 10;
-    if (parentQuality.positiveFCF === true) totalPoints += 10;
-    else if (parentQuality.positiveFCF === false) totalPoints += 0;
-
-    // Management track record (10 points) - subjective AI evaluation
-    maxPoints += 10;
-    if (parentQuality.managementTrackRecord) {
-      // Simple heuristic: positive keywords = points
-      const positive = /strong|successful|proven|excellent|good/i.test(parentQuality.managementTrackRecord);
-      const negative = /weak|poor|failed|concerning/i.test(parentQuality.managementTrackRecord);
-      if (positive && !negative) totalPoints += 10;
-      else if (!positive && !negative) totalPoints += 5;
-    }
-
-    // Strategic rationale (10 points) - subjective AI evaluation
-    maxPoints += 10;
-    if (parentQuality.strategicRationale) {
-      const positive = /unlock|value|focus|strategic|growth/i.test(parentQuality.strategicRationale);
-      const negative = /distress|debt|struggling|forced/i.test(parentQuality.strategicRationale);
-      if (positive && !negative) totalPoints += 10;
-      else if (!positive && !negative) totalPoints += 5;
-    }
+    countCriteria(parentQuality.meetsCapitalThreshold);
+    countCriteria(parentQuality.hasPositiveFCF);
+    countCriteria(parentQuality.hasStrongManagement);
+    countCriteria(parentQuality.hasHealthyRationale);
   }
 
   // Business quality criteria
-  // Revenue threshold (15 points)
-  maxPoints += 15;
-  if (businessQuality.meetsRevenueThreshold === true) totalPoints += 15;
-  else if (businessQuality.meetsRevenueThreshold === false) totalPoints += 0;
-
-  // Market position (15 points)
-  maxPoints += 15;
-  if (businessQuality.marketPosition === "Leading") totalPoints += 15;
-  else if (businessQuality.marketPosition === "#2-3") totalPoints += 10;
-  else if (businessQuality.marketPosition === "Lower") totalPoints += 0;
-
-  // Stable market (10 points)
-  maxPoints += 10;
-  if (businessQuality.inStableMarket === true) totalPoints += 10;
-  else if (businessQuality.inStableMarket === false) totalPoints += 0;
-
-  // Standalone viability (10 points) - subjective AI evaluation
-  maxPoints += 10;
-  if (businessQuality.standaloneViability) {
-    const positive = /yes|capable|proven|independent|strong/i.test(businessQuality.standaloneViability);
-    const negative = /no|dependent|weak|concerning/i.test(businessQuality.standaloneViability);
-    if (positive && !negative) totalPoints += 10;
-    else if (!positive && !negative) totalPoints += 5;
-  }
-
-  // Competitive moats (10 points) - subjective AI evaluation
-  maxPoints += 10;
-  if (businessQuality.competitiveMoats) {
-    const hasMultipleMoats = (businessQuality.competitiveMoats.match(/,/g) || []).length > 0;
-    const positive = /strong|significant|defensible|sustainable/i.test(businessQuality.competitiveMoats);
-    if (hasMultipleMoats || positive) totalPoints += 10;
-    else totalPoints += 5;
-  }
+  countCriteria(businessQuality.meetsRevenueThreshold);
+  countCriteria(businessQuality.hasStrongMarketPosition);
+  countCriteria(businessQuality.inStableMarket);
+  countCriteria(businessQuality.hasStandaloneViability);
+  countCriteria(businessQuality.hasCompetitiveMoats);
 
   // Financial structure criteria
-  // Debt/EBITDA threshold (10 points)
-  maxPoints += 10;
-  if (financialStructure.meetsDebtThreshold === true) totalPoints += 10;
-  else if (financialStructure.meetsDebtThreshold === false) totalPoints += 0;
+  countCriteria(financialStructure.meetsDebtThreshold);
+  countCriteria(financialStructure.hasSufficientCashRunway);
+  countCriteria(financialStructure.hasManageableCapitalRequirements);
+  countCriteria(financialStructure.hasCleanDebtStructure);
 
-  // Capital requirements (5 points) - subjective AI evaluation
-  maxPoints += 5;
-  if (financialStructure.capitalRequirements) {
-    const positive = /manageable|reasonable|low|moderate/i.test(financialStructure.capitalRequirements);
-    const negative = /high|excessive|concerning/i.test(financialStructure.capitalRequirements);
-    if (positive && !negative) totalPoints += 5;
-    else if (!positive && !negative) totalPoints += 3;
-  }
-
-  // Debt structure (5 points) - subjective AI evaluation
-  maxPoints += 5;
-  if (financialStructure.debtStructure) {
-    const positive = /clean|healthy|no concerns|reasonable/i.test(financialStructure.debtStructure);
-    const negative = /poison|concerning|risky|onerous/i.test(financialStructure.debtStructure);
-    if (positive && !negative) totalPoints += 5;
-    else if (!positive && !negative) totalPoints += 3;
-  }
-
-  // Calculate percentage score
-  const score = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0;
+  // Calculate pass percentage
+  const passPercentage = totalCount > 0 ? Math.round((metCount / totalCount) * 100) : 0;
 
   // Determine rating
   let rating: "Strong" | "Moderate" | "Weak" | "Insufficient Data";
-  if (maxPoints === 0) {
+  if (totalCount === 0) {
     rating = "Insufficient Data";
-  } else if (score >= 75) {
+  } else if (passPercentage >= 75) {
     rating = "Strong";
-  } else if (score >= 50) {
+  } else if (passPercentage >= 50) {
     rating = "Moderate";
   } else {
     rating = "Weak";
   }
 
-  return { score, rating };
+  return { metCount, totalCount, passPercentage, rating };
 }
