@@ -1,32 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-
-// Initialize Gemini AI with new SDK
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
-/**
- * Create MCP client connection to SEC EDGAR server
- */
-async function createMCPClient(): Promise<Client> {
-  // Create transport to connect to MCP server
-  const transport = new StdioClientTransport({
-    command: 'node',
-    args: ['/Users/bdaniels/personal/stocks-insider/mcp-server/dist/index.js']
-  });
-
-  const client = new Client({
-    name: 'spinoff-analyzer',
-    version: '1.0.0'
-  }, {
-    capabilities: {
-      tools: {}
-    }
-  });
-
-  await client.connect(transport);
-  return client;
-}
+import { validateGeminiAPIKey, genAI, parseGeminiJSONSafe } from '../utils/gemini.utils';
+import { createMCPClient } from '../utils/mcp.utils';
+import { buildSpinoffAnalysisPrompt, buildSpinoffAnalysisPromptWithData } from '../prompts';
 
 /**
  * Spinoff screening criteria result
@@ -144,23 +118,58 @@ export interface SpinoffAnalysis {
 export async function analyzeSpinoffWithGemini(
   ticker: string
 ): Promise<SpinoffAnalysis> {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is not configured');
-  }
+  validateGeminiAPIKey();
+
+  const fallback: SpinoffAnalysis = {
+    company_name: ticker.toUpperCase(),
+    ticker: ticker.toUpperCase(),
+    analysis_date: new Date().toISOString().split('T')[0],
+    executive_summary: {
+      overall_score: 0,
+      recommendation: 'AVOID',
+      position_size: '0%',
+      key_thesis: 'Analysis failed due to parsing error. Manual review required.'
+    },
+    phase1_screening: {
+      passed: false,
+      criteria: [{
+        name: 'Analysis Error',
+        status: 'FAIL',
+        details: 'Unable to complete analysis due to technical error'
+      }]
+    },
+    phase2_quality: {
+      competitive_position: { score: 0, weight: 0.30, explanation: 'N/A' },
+      revenue_quality: { score: 0, weight: 0.25, explanation: 'N/A' },
+      profitability: { score: 0, weight: 0.20, explanation: 'N/A' },
+      management: { score: 0, weight: 0.15, explanation: 'N/A' },
+      strategic_value: { score: 0, weight: 0.10, explanation: 'N/A' },
+      weighted_average: 0
+    },
+    phase3_valuation: {
+      metrics: [
+        { name: 'EV/EBITDA', value: 'N/A', threshold: '<15x', meets_threshold: false, calculation: 'Error' },
+        { name: 'P/E', value: 'N/A', threshold: '<25x', meets_threshold: false, calculation: 'Error' },
+        { name: 'FCF Yield', value: 'N/A', threshold: '>4%', meets_threshold: false, calculation: 'Error' },
+        { name: 'Debt/EBITDA', value: 'N/A', threshold: '<3.5x', meets_threshold: false, calculation: 'Error' },
+        { name: 'Interest Coverage', value: 'N/A', threshold: '>3x', meets_threshold: false, calculation: 'Error' }
+      ]
+    },
+    phase4_catalysts: [],
+    red_flags: ['Analysis parsing error - manual review required'],
+    sources: [],
+    detailed_analysis: `# Analysis Error\n\nUnable to complete spinoff analysis for ${ticker.toUpperCase()}.`
+  };
 
   try {
     console.log(`[Spinoff] Running AI analysis with MCP tools for ${ticker}...`);
-    // Build prompt - the AI will use MCP tools to get financial data
-    const prompt = buildSpinoffAnalysisPrompt(ticker);
 
-    // Create MCP client and fetch real SEC data
     const mcpClient = await createMCPClient();
     let response;
 
     try {
       console.log(`[Spinoff] Retrieving SEC data for ${ticker}...`);
 
-      // Step 1: Search for the company
       console.log(`[Spinoff] MCP Call: search_company with query: ${ticker}`);
       const searchResult = await mcpClient.callTool({
         name: 'search_company',
@@ -176,7 +185,6 @@ export async function analyzeSpinoffWithGemini(
       const company = searchData.data[0];
       console.log(`[Spinoff] Found ${company.name} (CIK: ${company.cik})`);
 
-      // Step 2: Get real financial data from SEC
       console.log(`[Spinoff] MCP Call: get_company_facts with CIK: ${company.cik}`);
       const factsResult = await mcpClient.callTool({
         name: 'get_company_facts',
@@ -191,7 +199,6 @@ export async function analyzeSpinoffWithGemini(
 
       const keyMetrics = factsData.data.keyMetrics;
 
-      // Step 3: Get recent filings for additional context
       console.log(`[Spinoff] MCP Call: get_filings with CIK: ${company.cik}, form: 10-K, count: 2`);
       const filingsResult = await mcpClient.callTool({
         name: 'get_filings',
@@ -206,13 +213,11 @@ export async function analyzeSpinoffWithGemini(
       console.log(`[Spinoff] MCP Response: get_filings`, JSON.stringify(filingsData, null, 2));
       const recentFilings = filingsData.success ? filingsData.data : [];
 
-      // Step 4: Build comprehensive prompt with real SEC data
       const promptWithRealData = buildSpinoffAnalysisPromptWithData(ticker, company, {
         keyMetrics,
         recentFilings
       });
 
-      // Use Gemini 1.5 Flash with comprehensive real data
       response = await genAI.models.generateContent({
         model: 'gemini-2.5-flash-lite',
         contents: [{ role: 'user', parts: [{ text: promptWithRealData }] }],
@@ -225,7 +230,6 @@ export async function analyzeSpinoffWithGemini(
       console.log(`[Spinoff] Analysis completed for ${company.name}`);
 
     } finally {
-      // Clean up MCP client connection
       await mcpClient.close();
     }
 
@@ -235,334 +239,18 @@ export async function analyzeSpinoffWithGemini(
       throw new Error('No response text received from Gemini API');
     }
 
-    // Parse JSON response from Gemini
-    const analysis = parseSpinoffResponse(text, ticker);
+    const analysis = parseGeminiJSONSafe<SpinoffAnalysis>(text, fallback);
+
+    if (!analysis.executive_summary || !analysis.phase1_screening ||
+        !analysis.phase2_quality || !analysis.phase3_valuation) {
+      console.warn('Invalid spinoff analysis structure, using fallback');
+      return fallback;
+    }
 
     return analysis;
   } catch (error) {
     console.error('Error calling Gemini API for spinoff analysis:', error);
     console.error('Error details:', JSON.stringify(error, null, 2));
     throw new Error(`Failed to analyze spinoff: ${error}`);
-  }
-}
-
-/**
- * Builds the comprehensive spinoff analysis prompt with real SEC data
- *
- * This prompt instructs Gemini to:
- * 1. Use the provided real SEC EDGAR financial data
- * 2. Apply the 4-phase spinoff analysis framework
- * 3. Calculate accurate valuation metrics from the data
- * 4. Return structured JSON with detailed analysis
- *
- * @param ticker - Stock ticker symbol
- * @param company - Company info from SEC
- * @param secData - Real SEC EDGAR financial data
- * @returns Formatted prompt for Gemini API
- */
-function buildSpinoffAnalysisPromptWithData(ticker: string, company: any, secData: any): string {
-  const keyMetrics = secData?.keyMetrics || {};
-  const recentFilings = secData?.recentFilings || [];
-
-  function formatMetric(metric: any) {
-    if (!metric) return 'N/A';
-    if (typeof metric.value === 'number') {
-      return `$${(metric.value / 1e9).toFixed(1)}B (${metric.period || 'N/A'})`;
-    }
-    return 'N/A';
-  }
-
-  const SYSTEM_PROMPT = `You are a spinoff investment analyst. I have provided you with REAL SEC EDGAR financial data for this company.
-
-COMPANY INFORMATION:
-- Name: ${company.name}
-- Ticker: ${company.ticker || ticker}
-- CIK: ${company.cik}
-- SIC: ${keyMetrics.sic || 'N/A'} - ${keyMetrics.sicDescription || 'N/A'}
-
-REAL SEC EDGAR FINANCIAL DATA (Latest Available):
-- Revenue: ${formatMetric(keyMetrics.metrics?.revenue)}
-- Net Income: ${formatMetric(keyMetrics.metrics?.netIncome)}
-- Total Assets: ${formatMetric(keyMetrics.metrics?.totalAssets)}
-- Total Liabilities: ${formatMetric(keyMetrics.metrics?.totalLiabilities)}
-- Stockholders Equity: ${formatMetric(keyMetrics.metrics?.stockholdersEquity)}
-- Operating Income: ${formatMetric(keyMetrics.metrics?.operatingIncome)}
-- Interest Expense: ${formatMetric(keyMetrics.metrics?.interestExpense)}
-- Cash & Equivalents: ${formatMetric(keyMetrics.metrics?.cashAndEquivalents)}
-- Current Assets: ${formatMetric(keyMetrics.metrics?.currentAssets)}
-- Current Liabilities: ${formatMetric(keyMetrics.metrics?.currentLiabilities)}
-
-RECENT SEC FILINGS:
-${recentFilings.length > 0 ? recentFilings.map((f: any, i: number) =>
-  `${i + 1}. ${f.form} filed on ${f.filingDate} (Report Date: ${f.reportDate || 'N/A'})`
-).join('\n') : 'No recent filings data available'}
-
-ANALYSIS FRAMEWORK:
-
-PHASE 1 - SCREENING (all must pass):
-- Parent: Market cap >$5B OR FCF >$500M
-- Parent: Positive FCF last 12 months
-- Spinoff: Revenue >$500M
-- Spinoff: Strong market position (#1-3)
-- Spinoff: Standalone viable
-- Debt/EBITDA <4x
-
-PHASE 2 - QUALITY (score 1-5):
-- Competitive Position (30%): 5=dominant, 1=weak
-- Revenue Quality (25%): 5=>70% recurring, 1=<10%
-- Profitability (20%): 5=ROIC>20%, 1=<5%
-- Management (15%): 5=proven track record, 1=inexperienced
-- Strategic Value (10%): 5=clear benefits, 1=none
-Calculate weighted average.
-
-PHASE 3 - VALUATION (calculate from provided SEC data):
-- EV/EBITDA <15x
-- P/E <25x
-- FCF Yield >4%
-- Debt/EBITDA <3.5x
-- Interest Coverage >3x
-
-PHASE 4 - CATALYSTS:
-Identify: forced selling, hidden value, management incentives, operational improvements
-
-RED FLAGS (auto-disqualify):
-- Parent in financial distress
-- No standalone management experience
-- Customer concentration >30%
-- Disruptive technology threat
-
-IMPORTANT: This is a hypothetical spinoff analysis. Use the real SEC data provided above to calculate actual financial metrics and provide a comprehensive analysis.
-
-Calculate actual metrics using the provided financial data:
-- Use Operating Income and Interest Expense to calculate Interest Coverage Ratio
-- Use Net Income and Revenue to calculate profit margins
-- Use Assets and Liabilities to calculate debt metrics
-- Show your calculations in the "calculation" field for each valuation metric
-
-Return ONLY this JSON (no extra text):`;
-
-  return SYSTEM_PROMPT + `
-
-{
-  "company_name": "${company.name}",
-  "ticker": "${company.ticker}",
-  "analysis_date": "${new Date().toISOString().split('T')[0]}",
-  "executive_summary": {
-    "overall_score": 0.0,
-    "recommendation": "BUY|PASS|AVOID",
-    "position_size": "",
-    "key_thesis": ""
-  },
-  "phase1_screening": {
-    "passed": true|false,
-    "criteria": [{"name": "", "status": "PASS|FAIL", "details": ""}]
-  },
-  "phase2_quality": {
-    "competitive_position": {"score": 0, "weight": 0.30, "explanation": ""},
-    "revenue_quality": {"score": 0, "weight": 0.25, "explanation": ""},
-    "profitability": {"score": 0, "weight": 0.20, "explanation": ""},
-    "management": {"score": 0, "weight": 0.15, "explanation": ""},
-    "strategic_value": {"score": 0, "weight": 0.10, "explanation": ""},
-    "weighted_average": 0.0
-  },
-  "phase3_valuation": {
-    "metrics": [
-      {"name": "EV/EBITDA", "value": "", "threshold": "<15x", "meets_threshold": true|false, "calculation": "show work using SEC data"},
-      {"name": "P/E", "value": "", "threshold": "<25x", "meets_threshold": true|false, "calculation": "show work using SEC data"},
-      {"name": "FCF Yield", "value": "", "threshold": ">4%", "meets_threshold": true|false, "calculation": "show work using SEC data"},
-      {"name": "Debt/EBITDA", "value": "", "threshold": "<3.5x", "meets_threshold": true|false, "calculation": "show work using SEC data"},
-      {"name": "Interest Coverage", "value": "", "threshold": ">3x", "meets_threshold": true|false, "calculation": "show work using SEC data"}
-    ]
-  },
-  "phase4_catalysts": [""],
-  "red_flags": [""],
-  "sources": [{"name": "SEC EDGAR", "url": "https://www.sec.gov/edgar"}],
-  "detailed_analysis": "# markdown analysis here"
-}
-
-Use the real SEC financial data provided above to calculate accurate metrics and provide a thorough analysis.`;
-}
-
-/**
- * Builds the original spinoff analysis prompt (kept for reference)
- */
-function buildSpinoffAnalysisPrompt(ticker: string): string {
-  const SYSTEM_PROMPT = `You are a spinoff investment analyst with access to SEC EDGAR MCP tools. Use these tools to get accurate financial data.
-
-AVAILABLE MCP TOOLS:
-- search_company: Find company CIK
-- get_filings: Get 10-K, 8-K, Form 10, proxy statements
-- get_financial_statements: Extract exact financial data from XBRL
-- get_company_facts: Get standardized financial facts
-
-ANALYSIS FRAMEWORK:
-
-PHASE 1 - SCREENING (all must pass):
-- Parent: Market cap >$5B OR FCF >$500M
-- Parent: Positive FCF last 12 months
-- Spinoff: Revenue >$500M
-- Spinoff: Strong market position (#1-3)
-- Spinoff: Standalone viable
-- Debt/EBITDA <4x
-
-PHASE 2 - QUALITY (score 1-5):
-- Competitive Position (30%): 5=dominant, 1=weak
-- Revenue Quality (25%): 5=>70% recurring, 1=<10%
-- Profitability (20%): 5=ROIC>20%, 1=<5%
-- Management (15%): 5=proven track record, 1=inexperienced
-- Strategic Value (10%): 5=clear benefits, 1=none
-Calculate weighted average.
-
-PHASE 3 - VALUATION (calculate from MCP data):
-- EV/EBITDA <15x
-- P/E <25x
-- FCF Yield >4%
-- Debt/EBITDA <3.5x
-- Interest Coverage >3x
-
-PHASE 4 - CATALYSTS:
-Identify: forced selling, hidden value, management incentives, operational improvements
-
-RED FLAGS (auto-disqualify):
-- Parent in financial distress
-- No standalone management experience
-- Customer concentration >30%
-- Disruptive technology threat
-
-PROCESS:
-1. Use search_company to find CIK for the ticker
-2. Use get_filings to find latest 10-K, 8-K (spinoff announcement), Form 10
-3. Use get_financial_statements to extract exact financial data
-4. Use get_company_facts for standardized metrics
-5. Apply framework rigorously
-6. Return ONLY this JSON (no extra text):
-
-{
-  "company_name": "",
-  "ticker": "",
-  "analysis_date": "",
-  "executive_summary": {
-    "overall_score": 0.0,
-    "recommendation": "BUY|PASS|AVOID",
-    "position_size": "",
-    "key_thesis": ""
-  },
-  "phase1_screening": {
-    "passed": true|false,
-    "criteria": [{"name": "", "status": "PASS|FAIL", "details": ""}]
-  },
-  "phase2_quality": {
-    "competitive_position": {"score": 0, "weight": 0.30, "explanation": ""},
-    "revenue_quality": {"score": 0, "weight": 0.25, "explanation": ""},
-    "profitability": {"score": 0, "weight": 0.20, "explanation": ""},
-    "management": {"score": 0, "weight": 0.15, "explanation": ""},
-    "strategic_value": {"score": 0, "weight": 0.10, "explanation": ""},
-    "weighted_average": 0.0
-  },
-  "phase3_valuation": {
-    "metrics": [
-      {"name": "EV/EBITDA", "value": "", "threshold": "<15x", "meets_threshold": true|false, "calculation": "show work"},
-      {"name": "P/E", "value": "", "threshold": "<25x", "meets_threshold": true|false, "calculation": "show work"},
-      {"name": "FCF Yield", "value": "", "threshold": ">4%", "meets_threshold": true|false, "calculation": "show work"},
-      {"name": "Debt/EBITDA", "value": "", "threshold": "<3.5x", "meets_threshold": true|false, "calculation": "show work"},
-      {"name": "Interest Coverage", "value": "", "threshold": ">3x", "meets_threshold": true|false, "calculation": "show work"}
-    ]
-  },
-  "phase4_catalysts": [""],
-  "red_flags": [""],
-  "sources": [{"name": "", "url": ""}],
-  "detailed_analysis": "# markdown analysis here"
-}
-
-Rules:
-- ALWAYS use MCP tools to get SEC data - never guess
-- Get exact numbers from XBRL via get_financial_statements
-- Show all calculations
-- If data missing, say "N/A"
-- Return ONLY valid JSON`;
-
-  return `${SYSTEM_PROMPT}
-
-**ANALYZE THIS TICKER: ${ticker.toUpperCase()}**
-
-Follow the complete process above and return the analysis in the exact JSON format specified. Use MCP tools to get accurate SEC EDGAR data.`;
-}
-
-/**
- * Parses Gemini's spinoff analysis response
- *
- * Handles JSON parsing with fallback error handling:
- * - Removes markdown code block markers
- * - Validates response structure
- * - Returns error analysis if parsing fails
- *
- * @param responseText - Raw text response from Gemini API
- * @param ticker - Ticker being analyzed (for fallback)
- * @returns Parsed spinoff analysis object
- */
-function parseSpinoffResponse(responseText: string, ticker: string): SpinoffAnalysis {
-  try {
-    // Remove markdown code blocks if present
-    let jsonText = responseText.trim();
-
-    // Remove ```json and ``` markers
-    jsonText = jsonText.replace(/^```json\s*\n?/i, '');
-    jsonText = jsonText.replace(/\n?```\s*$/i, '');
-    jsonText = jsonText.trim();
-
-    const parsed = JSON.parse(jsonText);
-
-    // Validate structure
-    if (!parsed.executive_summary || !parsed.phase1_screening ||
-        !parsed.phase2_quality || !parsed.phase3_valuation) {
-      throw new Error('Invalid response structure from Gemini');
-    }
-
-    return parsed as SpinoffAnalysis;
-  } catch (error) {
-    console.error('Failed to parse Gemini spinoff response:', responseText);
-    console.error('Parse error:', error);
-
-    // Return fallback analysis indicating error
-    return {
-      company_name: ticker.toUpperCase(),
-      ticker: ticker.toUpperCase(),
-      analysis_date: new Date().toISOString().split('T')[0],
-      executive_summary: {
-        overall_score: 0,
-        recommendation: 'AVOID',
-        position_size: '0%',
-        key_thesis: 'Analysis failed due to parsing error. Manual review required.'
-      },
-      phase1_screening: {
-        passed: false,
-        criteria: [{
-          name: 'Analysis Error',
-          status: 'FAIL',
-          details: 'Unable to complete analysis due to technical error'
-        }]
-      },
-      phase2_quality: {
-        competitive_position: { score: 0, weight: 0.30, explanation: 'N/A' },
-        revenue_quality: { score: 0, weight: 0.25, explanation: 'N/A' },
-        profitability: { score: 0, weight: 0.20, explanation: 'N/A' },
-        management: { score: 0, weight: 0.15, explanation: 'N/A' },
-        strategic_value: { score: 0, weight: 0.10, explanation: 'N/A' },
-        weighted_average: 0
-      },
-      phase3_valuation: {
-        metrics: [
-          { name: 'EV/EBITDA', value: 'N/A', threshold: '<15x', meets_threshold: false, calculation: 'Error' },
-          { name: 'P/E', value: 'N/A', threshold: '<25x', meets_threshold: false, calculation: 'Error' },
-          { name: 'FCF Yield', value: 'N/A', threshold: '>4%', meets_threshold: false, calculation: 'Error' },
-          { name: 'Debt/EBITDA', value: 'N/A', threshold: '<3.5x', meets_threshold: false, calculation: 'Error' },
-          { name: 'Interest Coverage', value: 'N/A', threshold: '>3x', meets_threshold: false, calculation: 'Error' }
-        ]
-      },
-      phase4_catalysts: [],
-      red_flags: ['Analysis parsing error - manual review required'],
-      sources: [],
-      detailed_analysis: `# Analysis Error\n\nUnable to complete spinoff analysis for ${ticker.toUpperCase()} due to parsing error.\n\nRaw response:\n\`\`\`\n${responseText.substring(0, 500)}...\n\`\`\``
-    };
   }
 }
