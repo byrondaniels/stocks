@@ -184,7 +184,9 @@ server/
 │   │   ├── priceHistory.ts          # Historical prices
 │   │   ├── canslimCalculator.ts     # CANSLIM scoring
 │   │   ├── rsCalculator.ts          # RS rating calculation
-│   │   ├── gemini.ts                # AI analysis
+│   │   ├── gemini.ts                # AI analysis (centralized Gemini API)
+│   │   ├── spinoffAnalyzer.ts       # Spinoff analysis
+│   │   ├── spinoffLookup.service.ts # Spinoff lookup
 │   │   ├── stock-data/              # External API clients
 │   │   │   ├── config.ts
 │   │   │   └── types.ts
@@ -193,6 +195,12 @@ server/
 │   │   │   ├── types.ts
 │   │   │   └── index.ts
 │   │   └── index.ts                 # Barrel export
+│   ├── prompts/             # AI prompt templates (centralized)
+│   │   ├── canslim-analysis.prompt.ts
+│   │   ├── sector-industry.prompt.ts
+│   │   ├── spinoff-analysis.prompt.ts
+│   │   ├── spinoff-lookup.prompt.ts
+│   │   └── index.ts         # Barrel export
 │   ├── db/
 │   │   ├── models/          # Mongoose models
 │   │   │   ├── Portfolio.model.ts
@@ -204,8 +212,12 @@ server/
 │   ├── middleware/          # Express middleware
 │   │   └── tickerValidation.ts
 │   ├── utils/               # Shared utilities
-│   │   ├── errorHandler.ts
-│   │   └── calculations.ts
+│   │   ├── errorHandler.ts  # Error handling utilities
+│   │   ├── calculations.ts  # Math calculations
+│   │   ├── gemini.utils.ts  # Gemini AI utilities (parsing, API calls)
+│   │   ├── cache.utils.ts   # Caching utilities (cache-or-calculate pattern)
+│   │   ├── mcp.utils.ts     # MCP client utilities
+│   │   └── index.ts         # Barrel export
 │   ├── __tests__/           # Test files
 │   ├── constants.ts         # Server-side constants
 │   └── index.ts             # Server entry point
@@ -1062,6 +1074,9 @@ FMP_API_KEY=your_key
 # Google Gemini AI (Required)
 GEMINI_API_KEY=your_key
 
+# MCP Server (Optional - for spinoff analysis)
+MCP_SERVER_PATH=/path/to/mcp-server/dist/index.js
+
 # MongoDB (Required)
 MONGODB_URI=mongodb://localhost:27011/stocks
 
@@ -1075,6 +1090,92 @@ PORT=3001
 2. **Alpha Vantage**: https://www.alphavantage.co/support/#api-key
 3. **Financial Modeling Prep**: https://site.financialmodelingprep.com/developer/docs
 4. **Google Gemini**: https://aistudio.google.com/app/apikey
+5. **MCP Server**: Optional - only needed for spinoff analysis features
+
+---
+
+## Shared Utilities and Prompts
+
+### Prompts Directory (server/src/prompts/)
+
+All AI prompts for Gemini are centralized in the `prompts/` directory:
+
+- **canslim-analysis.prompt.ts** - CANSLIM score analysis prompt
+- **sector-industry.prompt.ts** - Sector/industry classification prompt
+- **spinoff-analysis.prompt.ts** - Spinoff investment analysis prompts
+- **spinoff-lookup.prompt.ts** - Spinoff identification prompt
+
+**Usage:**
+```typescript
+import { buildCANSLIMPrompt, buildSectorIndustryPrompt } from '../prompts';
+
+const prompt = buildCANSLIMPrompt(metrics);
+```
+
+### Gemini Utilities (server/src/utils/gemini.utils.ts)
+
+Centralized utilities for Gemini AI interactions:
+
+- **validateGeminiAPIKey()** - Validates API key is configured
+- **parseGeminiJSON<T>(text)** - Parses JSON from Gemini response
+- **parseGeminiJSONSafe<T>(text, fallback)** - Safe parsing with fallback
+- **callGemini(model, prompt, config)** - Makes Gemini API call
+- **callGeminiJSON<T>(model, prompt, fallback, config)** - API call + JSON parsing
+
+**Usage:**
+```typescript
+import { validateGeminiAPIKey, callGeminiJSON } from '../utils/gemini.utils';
+
+validateGeminiAPIKey();
+
+const result = await callGeminiJSON<MyType>(
+  'gemini-2.0-flash',
+  prompt,
+  fallbackValue
+);
+```
+
+### Cache Utilities (server/src/utils/cache.utils.ts)
+
+Shared caching utilities for analysis data:
+
+- **getCachedAnalysis<T>(ticker, metricType, ttlHours)** - Retrieves cached data
+- **storeAnalysis<T>(ticker, metricType, data)** - Stores data in cache
+- **getCachedOrCalculate<T>(ticker, config, calculator)** - Cache-or-calculate pattern
+- **isCacheValid(timestamp, ttlHours)** - Checks cache validity
+
+**Usage:**
+```typescript
+import { getCachedOrCalculate } from '../utils/cache.utils';
+
+const rating = await getCachedOrCalculate(
+  'AAPL',
+  { metricType: 'rs-rating', ttlHours: 24 },
+  async () => calculateRSRating('AAPL')
+);
+```
+
+### MCP Utilities (server/src/utils/mcp.utils.ts)
+
+MCP (Model Context Protocol) client utilities for SEC Edgar data:
+
+- **createMCPClient()** - Creates and connects MCP client
+- **withMCPClient<T>(operation)** - Safely executes operation with auto-cleanup
+
+**Usage:**
+```typescript
+import { withMCPClient } from '../utils/mcp.utils';
+
+const data = await withMCPClient(async (client) => {
+  const result = await client.callTool({
+    name: 'search_company',
+    arguments: { query: 'AAPL' }
+  });
+  return JSON.parse(result.content[0]?.text || '{}');
+});
+```
+
+**Note:** Requires `MCP_SERVER_PATH` environment variable to be configured.
 
 ---
 

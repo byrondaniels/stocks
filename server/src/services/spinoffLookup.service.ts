@@ -4,9 +4,10 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { SpinoffLookupModel, ISpinoffLookupDocument } from "../db";
+import { SpinoffLookupModel } from "../db";
+import { validateGeminiAPIKey, parseGeminiJSONSafe } from "../utils/gemini.utils";
+import { buildSpinoffLookupPrompt } from "../prompts";
 
-// Initialize Gemini AI
 const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "",
   apiVersion: "v1alpha"
@@ -50,11 +51,17 @@ export interface SpinoffLookupResult {
  * console.log(result.parentTicker);   // "PARENT"
  */
 export async function lookupSpinoff(ticker: string): Promise<SpinoffLookupResult> {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
-  }
+  validateGeminiAPIKey();
 
   const normalizedTicker = ticker.toUpperCase().trim();
+
+  const fallback: SpinoffLookupResult = {
+    ticker: normalizedTicker,
+    isSpinoff: false,
+    parentCompany: null,
+    parentTicker: null,
+    analyzedAt: new Date(),
+  };
 
   try {
     const prompt = buildSpinoffLookupPrompt(normalizedTicker);
@@ -70,9 +77,8 @@ export async function lookupSpinoff(ticker: string): Promise<SpinoffLookupResult
       config,
     });
 
-    // Extract text from the correct location in the response
     let text: string | undefined;
-    
+
     if (result.candidates && result.candidates.length > 0) {
       const candidate = result.candidates[0];
       if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
@@ -84,10 +90,25 @@ export async function lookupSpinoff(ticker: string): Promise<SpinoffLookupResult
       throw new Error("No response text received from Gemini API - model may have only performed search without generating response");
     }
 
-    // Parse the response
-    const lookupResult = parseSpinoffLookupResponse(text, normalizedTicker);
+    const parsed = parseGeminiJSONSafe<any>(text, {
+      isSpinoff: false,
+      parentCompany: null,
+      parentTicker: null
+    });
 
-    // Store in database (upsert - always update with fresh data)
+    if (typeof parsed.isSpinoff !== "boolean") {
+      console.warn(`Invalid spinoff lookup response for ${normalizedTicker}, using fallback`);
+      return fallback;
+    }
+
+    const lookupResult: SpinoffLookupResult = {
+      ticker: normalizedTicker,
+      isSpinoff: parsed.isSpinoff,
+      parentCompany: parsed.parentCompany?.trim() || null,
+      parentTicker: parsed.parentTicker?.toUpperCase().trim() || null,
+      analyzedAt: new Date(),
+    };
+
     await SpinoffLookupModel.findOneAndUpdate(
       { ticker: normalizedTicker },
       {
@@ -103,112 +124,7 @@ export async function lookupSpinoff(ticker: string): Promise<SpinoffLookupResult
     return lookupResult;
   } catch (error) {
     console.error(`Error looking up spinoff for ${normalizedTicker}:`, error);
-    // Ensure the original error message is correctly surfaced if it's the API error
     const errorMessage = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to lookup spinoff: ${errorMessage}`);
-  }
-}
-
-/**
- * Builds the prompt for Gemini to lookup spinoff information
- *
- * Asks Gemini to use Google Search to answer three specific questions:
- * 1. Is this a spinoff from the last 2 years?
- * 2. What is the parent company name?
- * 3. What is the parent company's ticker?
- *
- * @param ticker - Stock ticker symbol
- * @returns Formatted prompt for Gemini API with grounding
- */
-function buildSpinoffLookupPrompt(ticker: string): string {
-  return `Stock ticker: ${ticker}
-
-Please search Google extensively to find information about this ticker and determine if it's a recent spinoff. Try multiple search approaches:
-
-Search strategies to use:
-1. "${ticker} stock ticker company"
-2. "${ticker} NYSE NASDAQ TSX"
-3. "${ticker} spinoff"
-4. "${ticker} spun off"
-5. "${ticker} parent company"
-
-If initial searches don't return clear results, try broader searches and look for any company that might trade under this ticker symbol.
-
-Questions to answer:
-1. Is ${ticker} a spinoff that occurred within the last 2 years (since ${getDateTwoYearsAgo()})?
-2. If yes, what is the parent company that spun it off?
-3. If yes, what is the parent company's ticker symbol?
-
-You MUST return a response in this EXACT JSON format (no other text, no explanations, no markdown):
-
-{
-  "isSpinoff": true or false,
-  "parentCompany": "Parent Company Name" or null,
-  "parentTicker": "PARENT_TICKER" or null
-}
-
-CRITICAL REQUIREMENTS:
-- Use the Google Search results to determine the answer
-- Always return the JSON structure above
-- Set isSpinoff to true only if you find evidence of a spinoff within the last 2 years
-- Return ONLY the JSON - no other text whatsoever
-
-Search comprehensively using Google Search, then provide your JSON response:`;
-}
-
-/**
- * Gets the date from 2 years ago in YYYY-MM-DD format
- */
-function getDateTwoYearsAgo(): string {
-  const date = new Date();
-  date.setFullYear(date.getFullYear() - 2);
-  return date.toISOString().split("T")[0];
-}
-
-/**
- * Parses Gemini's spinoff lookup response
- * 
- * @param responseText - Raw text response from Gemini API
- * @param ticker - Ticker being looked up
- * @returns Parsed spinoff lookup result
- */
-function parseSpinoffLookupResponse(
-  responseText: string,
-  ticker: string
-): SpinoffLookupResult {
-  try {
-    // Clean up common markdown artifacts
-    const cleanedText = responseText
-      .trim()
-      .replace(/^```(?:json)?\s*\n?/i, "") // Remove opening code blocks
-      .replace(/\n?```\s*$/i, "")         // Remove closing code blocks
-      .trim();
-
-    const parsed = JSON.parse(cleanedText);
-
-    // Simple validation
-    if (typeof parsed.isSpinoff !== "boolean") {
-      throw new Error("Invalid response: isSpinoff must be boolean");
-    }
-
-    return {
-      ticker: ticker.toUpperCase(),
-      isSpinoff: parsed.isSpinoff,
-      parentCompany: parsed.parentCompany?.trim() || null,
-      parentTicker: parsed.parentTicker?.toUpperCase().trim() || null,
-      analyzedAt: new Date(),
-    };
-  } catch (error) {
-    console.error(`Failed to parse Gemini response for ${ticker}:`, responseText);
-    console.error("Parse error:", error);
-
-    // Return safe fallback
-    return {
-      ticker: ticker.toUpperCase(),
-      isSpinoff: false,
-      parentCompany: null,
-      parentTicker: null,
-      analyzedAt: new Date(),
-    };
   }
 }
